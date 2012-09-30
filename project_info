@@ -1,0 +1,14 @@
+Home automation backend based on linknx (revision LINKNX_0_0_1_30)
+------------------------------------------------------------------
+
+cd /tmp/
+
+cvs -d:pserver:anonymous@linknx.cvs.sourceforge.net:/cvsroot/linknx login
+=> for password press enter
+
+cvs -z3 -d:pserver:anonymous@linknx.cvs.sourceforge.net:/cvsroot/linknx co -r LINKNX_0_0_1_30 -P linknx
+
+cd linknx/linknx/
+find . -name 'CVS' | xargs rm -r 
+mv linknx /src/open-home-automation/
+
