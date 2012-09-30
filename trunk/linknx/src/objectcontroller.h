@@ -28,6 +28,9 @@
 #include "logger.h"
 #include "ticpp.h"
 #include "knxconnection.h"
+#ifdef OPEN_HOME_AUTOMATION
+#include "domintellconnection.h"
+#endif
 
 class Object;
 
@@ -76,7 +79,14 @@ public:
 
     void setID(const char* id) { id_m = id; };
     const char* getID() { return id_m.c_str(); };
+#ifdef OPEN_HOME_AUTOMATION
+    void setDescr(const char* descr) { descr_m = descr; };
+#endif
     const char* getDescr() { return descr_m.c_str(); };
+#ifdef OPEN_HOME_AUTOMATION
+    void setAddress(const char* address) { address_m = address; };
+    virtual std::string getAddress() { return address_m; };    
+#endif
     const eibaddr_t getGad() { return gad_m; };
     const eibaddr_t getReadRequestGad() { return readRequestGad_m; };
     std::list<eibaddr_t>::iterator getListenerGad() { return listenerGadList_m.begin(); };
@@ -121,18 +131,26 @@ protected:
         Default = Comm | Write | Transmit | Update
     };
     int flags_m;
+#ifdef OPEN_HOME_AUTOMATION
+    bool readPending_m;
+#endif
     static Logger& logger_m;
 private:
     std::string id_m;
     std::string initValue_m;
     std::string descr_m;
     int refCount_m;
+#ifdef OPEN_HOME_AUTOMATION
+    std::string address_m;
+#endif
     eibaddr_t gad_m;
     eibaddr_t readRequestGad_m;
     eibaddr_t lastTx_m;
     bool persist_m;
     bool writeLog_m;
+#ifndef OPEN_HOME_AUTOMATION
     bool readPending_m;
+#endif
     typedef std::list<ChangeListener*> ListenerList_t;
     ListenerList_t listenerList_m;
     typedef std::list<eibaddr_t> ListenerGadList_t;
@@ -175,6 +193,71 @@ protected:
     virtual ObjectValue* getObjectValue() { return static_cast<SwitchingObjectValue*>(this); };
     static Logger& logger_m;
 };
+
+#ifdef OPEN_HOME_AUTOMATION
+/*----DBIR object------------------------------------------------------------*/
+class DBIRObject : public Object, public SwitchingObjectValue
+{
+public:
+    DBIRObject();
+    virtual ~DBIRObject();
+
+    virtual ObjectValue* createObjectValue(const std::string& value);
+    //virtual void setValue(ObjectValue* value);
+    virtual void setValue(const std::string& value);
+    void updateValue(const std::string& value); /* called on update from bus */
+    virtual std::string getType() { return "DBIR01"; };
+
+    //virtual bool forceUpdate();
+    virtual void read();    
+    virtual void doWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void doSend(bool isWrite);
+    void setBoolValue(bool value);
+    bool getBoolValue() { get(); return value_m; };
+    virtual void onWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onRead(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onResponse(const uint8_t* buf, int len, eibaddr_t src);
+
+protected:
+    virtual bool set(ObjectValue* value) { return SwitchingObjectValue::set(value); };
+    virtual bool set(double value) { return SwitchingObjectValue::set(value); };
+    virtual ObjectValue* getObjectValue() { return static_cast<SwitchingObjectValue*>(this); };
+    static Logger& logger_m;
+};
+/*----DBIR object------------------------------------------------------------*/
+
+/*----DISM object------------------------------------------------------------*/
+class DISMObject : public Object, public SwitchingObjectValue
+{
+public:
+    DISMObject(int inputs);
+    virtual ~DISMObject();
+
+    virtual ObjectValue* createObjectValue(const std::string& value);
+    virtual void setValue(const std::string& value);
+    void updateValue(const std::string& value); /* called on update from bus */
+    virtual std::string getType();
+
+    virtual void read();    
+    virtual void doWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void doSend(bool isWrite);
+    void setBoolValue(bool value);
+    bool getBoolValue() { get(); return value_m; };
+    virtual void onWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onRead(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onResponse(const uint8_t* buf, int len, eibaddr_t src);
+
+protected:
+    virtual bool set(ObjectValue* value) { return SwitchingObjectValue::set(value); };
+    virtual bool set(double value) { return SwitchingObjectValue::set(value); };
+    virtual ObjectValue* getObjectValue() { return static_cast<SwitchingObjectValue*>(this); };
+    static Logger& logger_m;
+
+private:
+    int inputs_m;
+};
+/*----DISM object------------------------------------------------------------*/
+#endif
 
 class StepDirObjectValue : public ObjectValue
 {
@@ -244,6 +327,57 @@ protected:
     virtual int getStepCode() { return stepcode_m; };
     static Logger& logger_m;
 };
+
+#ifdef OPEN_HOME_AUTOMATION
+/*----DDIM object------------------------------------------------------------*/
+class DDIMObjectValue : public ObjectValue
+{
+public:
+    DDIMObjectValue(const std::string& value);
+    DDIMObjectValue(int value);
+    virtual ~DDIMObjectValue() {};
+    virtual bool equals(ObjectValue* value);
+    virtual int compare(ObjectValue* value);
+    virtual std::string toString();
+    virtual double toNumber();
+protected:
+    virtual bool set(ObjectValue* value);
+    virtual bool set(int value);
+    virtual bool set(double value);
+    int value_m;
+    bool step_m;
+};
+
+class DDIMObject : public Object, public DDIMObjectValue
+{
+public:
+    DDIMObject() : DDIMObjectValue(0) {};
+    virtual ~DDIMObject() {};
+    virtual ObjectValue* createObjectValue(const std::string& value);
+    virtual void setValue(const std::string& value);
+    virtual std::string getType() { return "DDIM01"; };
+    void updateValue(const std::string& value); /* called on update from bus */
+    void updateValue(int value); /* called on update from bus */
+
+    virtual void read();    
+    virtual void onWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onRead(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onResponse(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void doWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void doSend(bool isWrite);
+    //virtual void setStepValue(int direction, int stepcode);
+protected:
+    virtual bool set(ObjectValue* value) { return DDIMObjectValue::set(value); };
+    virtual bool set(double value) { return DDIMObjectValue::set(value); };
+    virtual ObjectValue* getObjectValue() { return static_cast<DDIMObjectValue*>(this); };
+    //virtual bool setStep(int direction, int stepcode) { if (direction_m != direction || stepcode_m != stepcode) { direction_m = direction; stepcode_m = stepcode; return true; } return false; };
+    //virtual int getDirection() { return direction_m; };
+   // virtual int getStepCode() { return stepcode_m; };
+    static Logger& logger_m;
+};
+
+/*----DDIM object------------------------------------------------------------*/
+#endif
 
 class BlindsObjectValue : public StepDirObjectValue
 {
@@ -929,7 +1063,11 @@ protected:
     static Logger& logger_m;
 };
 
+#ifndef OPEN_HOME_AUTOMATION
 class ObjectController : public TelegramListener
+#else
+class ObjectController : public TelegramListener, public BusEventListener
+#endif
 {
 public:
     static ObjectController* instance();
@@ -943,12 +1081,17 @@ public:
     void removeObject(Object* object);
 
     Object* getObject(const std::string& id);
-
+#ifdef OPEN_HOME_AUTOMATION
+    bool objectExists(const std::string& id);
+#endif
     virtual void importXml(ticpp::Element* pConfig);
     virtual void exportXml(ticpp::Element* pConfig);
 
     virtual void exportObjectValues(ticpp::Element* pObjects);
 
+#ifdef OPEN_HOME_AUTOMATION
+    virtual void onBusEvent(const uint8_t* buf, int len);
+#endif
     virtual void onWrite(eibaddr_t src, eibaddr_t dest, const uint8_t* buf, int len);
     virtual void onRead(eibaddr_t src, eibaddr_t dest, const uint8_t* buf, int len);
     virtual void onResponse(eibaddr_t src, eibaddr_t dest, const uint8_t* buf, int len);
