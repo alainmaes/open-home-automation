@@ -46,6 +46,9 @@ void Services::start()
 {
     timers_m.startManager();
     knxConnection_m.startConnection();
+#ifdef OPEN_HOME_AUTOMATION
+    domintellConnection_m.startConnection();
+#endif
 }
 
 void Services::stop()
@@ -53,6 +56,9 @@ void Services::stop()
     infoStream("Services") << "Stopping services" << endlog;
     timers_m.stopManager();
     knxConnection_m.stopConnection();
+#ifdef OPEN_HOME_AUTOMATION
+    domintellConnection_m.stopConnection();
+#endif
 }
 
 void Services::createDefault()
@@ -80,6 +86,11 @@ void Services::importXml(ticpp::Element* pConfig)
     ticpp::Element* pKnxConnection = pConfig->FirstChildElement("knxconnection", false);
     if (pKnxConnection)
         knxConnection_m.importXml(pKnxConnection);
+#ifdef OPEN_HOME_AUTOMATION
+    ticpp::Element* pDomintellConnection = pConfig->FirstChildElement("domintellconnection", false);
+    if (pDomintellConnection)
+        domintellConnection_m.importXml(pDomintellConnection);
+#endif
     ticpp::Element* pExceptionDays = pConfig->FirstChildElement("exceptiondays", false);
     if (pExceptionDays)
         exceptionDays_m.importXml(pExceptionDays);
@@ -118,6 +129,12 @@ void Services::exportXml(ticpp::Element* pConfig)
     ticpp::Element pKnxConnection("knxconnection");
     knxConnection_m.exportXml(&pKnxConnection);
     pConfig->LinkEndChild(&pKnxConnection);
+
+#ifdef OPEN_HOME_AUTOMATION
+    ticpp::Element pDomintellConnection("domintellconnection");
+    domintellConnection_m.exportXml(&pDomintellConnection);
+    pConfig->LinkEndChild(&pDomintellConnection);
+#endif
 
     ticpp::Element pExceptionDays("exceptiondays");
     exceptionDays_m.exportXml(&pExceptionDays);

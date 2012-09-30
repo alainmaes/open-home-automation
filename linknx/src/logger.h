@@ -74,8 +74,11 @@ private:
 #define LOG_SHOW_ERROR 1
 #define LOG_SHOW_WARN 1
 #define LOG_SHOW_INFO 1
+#ifndef OPEN_HOME_AUTOMATION
 #undef  LOG_SHOW_DEBUG
-
+#else
+#define LOG_SHOW_DEBUG 1
+#endif
 
 #ifdef LOG_SHOW_ERROR
 #define ErrStream std::ostream&

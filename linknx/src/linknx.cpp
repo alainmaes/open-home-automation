@@ -255,6 +255,9 @@ main (int ac, char *ag[])
 
     services->setConfigFile(arg.writeconfig);
     services->getKnxConnection()->addTelegramListener(objects);
+#ifdef OPEN_HOME_AUTOMATION
+    services->getDomintellConnection()->addBusEventListener(objects);
+#endif
     services->start();
     int x;
     pth_sigwait (&t1, &x);

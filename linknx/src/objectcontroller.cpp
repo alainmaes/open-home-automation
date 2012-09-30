@@ -22,6 +22,9 @@
 #include "services.h"
 #include <cmath>
 #include <cassert>
+#ifdef OPEN_HOME_AUTOMATION
+#include <algorithm>
+#endif
 
 ObjectController* ObjectController::instance_m;
 
@@ -80,6 +83,18 @@ Object* Object::create(const std::string& type)
         return new String14AsciiObject();
     else if (type == "28.001")
         return new StringObject();
+#ifdef OPEN_HOME_AUTOMATION
+    else if (type == "DBIR01")
+        return new DBIRObject();
+    else if (type == "DMOV01")
+        return new DISMObject(1);
+    else if (type == "DISM04")
+        return new DISMObject(4);
+    else if (type == "DISM08")
+        return new DISMObject(8);
+    else if (type == "DDIM01")
+        return new DDIMObject();
+#endif
     else
         return 0;
 }
@@ -140,6 +155,13 @@ void Object::importXml(ticpp::Element* pConfig)
     else if (gad != "nochange")
         gad_m = Object::ReadGroupAddr(gad);
     readRequestGad_m = gad_m;
+
+#ifdef OPEN_HOME_AUTOMATION
+    std::string address = pConfig->GetAttributeOrDefault("address", "nochange");
+    // set default value to "nochange" just to see if the attribute was present or not in xml
+   if (address != "nochange")
+        address_m = address;
+#endif
 
     bool has_descr = false;
     bool has_listener = false;
@@ -239,7 +261,13 @@ void Object::importXml(ticpp::Element* pConfig)
         delete objval;
     }
 
-    logger_m.infoStream() << "Configured object '" << id_m << "': gad=" << WriteGroupAddr(gad_m) << endlog;
+#ifndef OPEN_HOME_AUTOMATION
+   logger_m.infoStream() << "Configured object '" << id_m << "': gad=" << WriteGroupAddr(gad_m) << endlog;
+#else
+    logger_m.infoStream() << "Configured object '" << id_m
+                          << "': gad=" << WriteGroupAddr(gad_m)
+                          << " address= " << address_m << endlog;
+#endif
 }
 
 void Object::exportXml(ticpp::Element* pConfig)
@@ -249,6 +277,11 @@ void Object::exportXml(ticpp::Element* pConfig)
 
     if (gad_m != 0)
         pConfig->SetAttribute("gad", WriteGroupAddr(gad_m));
+
+#ifdef OPEN_HOME_AUTOMATION
+     if (address_m != "")
+        pConfig->SetAttribute("address", address_m);
+#endif
 
     if (initValue_m != "")
         pConfig->SetAttribute("init", initValue_m);
@@ -563,6 +596,235 @@ bool StepDirObjectValue::equals(ObjectValue* value)
     return (direction_m == val->direction_m) && (stepcode_m == val->stepcode_m);
 }
 
+#ifdef OPEN_HOME_AUTOMATION
+/*----DBIR object------------------------------------------------------------*/
+
+Logger& DBIRObject::logger_m(Logger::getInstance("DBIRObject"));
+
+DBIRObject::DBIRObject() : SwitchingObjectValue(false)
+{}
+
+DBIRObject::~DBIRObject()
+{}
+
+ObjectValue* DBIRObject::createObjectValue(const std::string& value)
+{
+    return new SwitchingObjectValue(value);
+}
+
+void DBIRObject::setValue(const std::string& value)
+{
+    SwitchingObjectValue val(value);
+    Object::setValue(&val);
+}
+
+/* called on update from bus */
+void DBIRObject::updateValue(const std::string& value)
+{
+    SwitchingObjectValue val(value);
+    if (set(&val))
+    	onUpdate();
+}
+
+void DBIRObject::read()
+{
+    logger_m.errorStream() << "DBIRObject: read"
+                           << endlog;
+    
+    DomintellConnection* con = Services::instance()->getDomintellConnection();
+
+    //if (!readPending_m)
+    {
+        std::string command;
+
+        command.append(std::string("BIR"));
+        command.append(getAddress().substr(0, getAddress().length() - 2));
+        command.append(std::string("%S"));
+    
+        logger_m.errorStream() << "DBIRObject: read " << command
+                               << endlog;
+
+        con->write((uint8_t*)command.c_str(), command.length());
+
+        //readPending_m = true;
+    }
+
+    /*int cnt = 0;
+    while (cnt < 100 && readPending_m)
+    {
+        if (con->isRunning())
+            con->checkInput();
+        else
+            pth_usleep(10000);
+        ++cnt;
+    }*/
+    // If the device didn't answer after 1 second, we consider the object's
+    // default value as the current value to avoid waiting forever.
+    init_m = true;
+}
+
+void DBIRObject::doWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DBIRObject: doWrite"
+                           << endlog;
+}
+
+void DBIRObject::doSend(bool isWrite)
+{
+    std::string command;
+
+    command.append(std::string("BIR"));
+    command.append(getAddress());
+    
+    if (getValue() == "on")
+        command.append(std::string("%I"));
+    else
+        command.append(std::string("%O"));
+
+    Services::instance()->getDomintellConnection()->write((uint8_t*)command.c_str(), command.length());
+}
+
+void DBIRObject::setBoolValue(bool value)
+{
+    SwitchingObjectValue val(value);
+    Object::setValue(&val);
+}
+
+void DBIRObject::onWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DBIRObject: Unexpected call of onWrite"
+                           << endlog;
+}
+
+void DBIRObject::onRead(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DBIRObject: Unexpected call of onRead"
+                           << endlog;
+}
+
+void DBIRObject::onResponse(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DBIRObject: Unexpected call of onResponse"
+                           << endlog;
+}
+
+/*----DBIR object------------------------------------------------------------*/
+
+/*----DISM object------------------------------------------------------------*/
+Logger& DISMObject::logger_m(Logger::getInstance("DISMObject"));
+
+DISMObject::DISMObject(int inputs) : SwitchingObjectValue(false)
+{
+    inputs_m = inputs;
+}
+
+DISMObject::~DISMObject()
+{}
+
+std::string DISMObject::getType()
+{
+    if (inputs_m == 1)
+    {
+        return "DMOV01";
+    }
+    else if (inputs_m == 4)
+    {
+        return "DISM04";
+    }
+    else if (inputs_m == 8)
+    {
+        return "DISM08";
+    }
+    else
+    {
+        logger_m.debugStream() << "DISMObject: unsupported number of inputs "
+                               << inputs_m << endlog;
+        return "ERROR";
+    }
+}
+
+ObjectValue* DISMObject::createObjectValue(const std::string& value)
+{
+    return new SwitchingObjectValue(value);
+}
+
+void DISMObject::setValue(const std::string& value)
+{
+    SwitchingObjectValue val(value);
+    Object::setValue(&val);
+}
+
+/* called on update from bus */
+void DISMObject::updateValue(const std::string& value)
+{
+    SwitchingObjectValue val(value);
+    if (set(&val))
+    	onUpdate();
+}
+
+void DISMObject::read()
+{
+    DomintellConnection* con = Services::instance()->getDomintellConnection();
+    if (!readPending_m)
+    {
+        //uint8_t buf[2] = { 0, 0 };
+        //con->write(getReadRequestGad(), buf, 2); //TODO
+    }
+    readPending_m = true;
+
+    int cnt = 0;
+    while (cnt < 100 && readPending_m)
+    {
+        if (con->isRunning())
+            con->checkInput();
+        else
+            pth_usleep(10000);
+        ++cnt;
+    }
+    // If the device didn't answer after 1 second, we consider the object's
+    // default value as the current value to avoid waiting forever.
+    init_m = true;
+}
+
+void DISMObject::doWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DISMObject: doWrite"
+                           << endlog;
+}
+
+void DISMObject::doSend(bool isWrite)
+{
+    logger_m.errorStream() << "DISMObject: doSend"
+                           << endlog;
+}
+
+void DISMObject::setBoolValue(bool value)
+{
+    SwitchingObjectValue val(value);
+    Object::setValue(&val);
+}
+
+void DISMObject::onWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DISMObject: Unexpected call of onWrite"
+                           << endlog;
+}
+
+void DISMObject::onRead(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DISMObject: Unexpected call of onRead"
+                           << endlog;
+}
+
+void DISMObject::onResponse(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DISMObject: Unexpected call of onResponse"
+                           << endlog;
+}
+
+/*----DISM object------------------------------------------------------------*/
+#endif
+
 int StepDirObjectValue::compare(ObjectValue* value)
 {
     assert(value);
@@ -736,6 +998,254 @@ void DimmingObject::setStepValue(int direction, int stepcode)
         onInternalUpdate();
     }
 }
+
+#ifdef OPEN_HOME_AUTOMATION
+/*----DDIM object------------------------------------------------------------*/
+
+DDIMObjectValue::DDIMObjectValue(const std::string& value)
+{
+    value_m = 0;
+    step_m = false;
+    if (value == "on" || value == "true")
+        value_m = 100;
+    else if (value == "off" || value == "false")
+        value_m = 0;
+    else if (value == "up")
+    {
+        value_m = 5;
+        step_m = true;
+    }
+    else if (value == "down")
+    {
+        value_m = -5;
+        step_m = true;        
+    }
+    else
+    {
+        std::istringstream val(value);
+        val >> value_m;
+
+        if (val.fail() ||
+            val.peek() != std::char_traits<char>::eof()) // workaround for wrong val.eof() flag in uClibc++
+        {
+            std::stringstream msg;
+            msg << "DDIMObjectValue: Bad value: '" << value << "'" << std::endl;
+            throw ticpp::Exception(msg.str());
+        }
+
+        if (value_m > 100)
+            value_m = 100;
+        if (value_m < 0)
+            value_m = 0;
+    }
+}
+
+DDIMObjectValue::DDIMObjectValue(int value)
+{
+    value_m = value;
+    step_m = false;
+    if (value_m > 100)
+        value_m = 100;
+    if (value_m < 0)
+        value_m = 0;
+}
+
+std::string DDIMObjectValue::toString()
+{
+    std::ostringstream out;
+    out.precision(8);
+    out << value_m;
+
+    return out.str();
+}
+
+double DDIMObjectValue::toNumber()
+{
+    return (double)value_m;
+}
+
+bool DDIMObjectValue::equals(ObjectValue* value)
+{
+    assert(value);
+    DDIMObjectValue* val = dynamic_cast<DDIMObjectValue*>(value);
+    if (val == 0)
+    {
+        logger_m.errorStream() << "DDIMObjectValue: ERROR, equals() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+        return false;
+    }
+    logger_m.infoStream() << "DDIMObjectValue: Compare value_m='" << value_m << "' to value='" << val->value_m << "'" << endlog;
+    return (step_m == val->step_m && value_m == val->value_m);
+}
+
+int DDIMObjectValue::compare(ObjectValue* value)
+{
+    assert(value);
+    DDIMObjectValue* val = dynamic_cast<DDIMObjectValue*>(value);
+    if (val == 0)
+    {
+        logger_m.errorStream()  << "DDIMObjectValue: ERROR, compare() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+        return false;
+    }
+    logger_m.infoStream() << "DDIMObjectValue: Compare value_m='" << value_m << "' to value='" << val->value_m << "'" << endlog;
+   if (step_m && !val->step_m)
+       return -1;
+   else if (!step_m && val->step_m)
+       return 1;
+ 
+   if (value_m == val->value_m)
+        return 0;
+    else if (value_m > val->value_m)
+        return 1;
+    else
+        return -1;
+}
+
+bool DDIMObjectValue::set(ObjectValue* value)
+{
+    DDIMObjectValue* val = dynamic_cast<DDIMObjectValue*>(value);
+    if (val == 0)
+    {
+        logger_m.errorStream()  << "DDIMObjectValue: ERROR, set() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+        return false;
+    }
+
+    if (val->step_m)
+    {
+        value_m += val->value_m;
+        return true;
+    }
+    if (value_m != val->value_m)
+    {
+        value_m = val->value_m;
+        return true;
+    }
+    return false;
+}
+
+bool DDIMObjectValue::set(double value)
+{
+    if (value_m != (int)value)
+    {
+        value_m = (int)value;
+        return true;
+    }
+    return false;
+}
+
+bool DDIMObjectValue::set(int value)
+{
+    if (value_m != value)
+    {
+        value_m = value;
+        return true;
+    }
+    return false;
+}
+
+Logger& DDIMObject::logger_m(Logger::getInstance("DDIMObject"));
+
+ObjectValue* DDIMObject::createObjectValue(const std::string& value)
+{
+    return new DDIMObjectValue(value);
+}
+
+void DDIMObject::setValue(const std::string& value)
+{
+    DDIMObjectValue val(value);
+    Object::setValue(&val);
+}
+
+/* called on update from bus */
+void DDIMObject::updateValue(const std::string& value)
+{
+    DDIMObjectValue val(value);
+    if (set(&val))
+    	onUpdate();
+}
+
+/* called on update from bus */
+void DDIMObject::updateValue(int value)
+{
+    DDIMObjectValue val(value);
+    if (set(&val))
+    	onUpdate();
+}
+
+void DDIMObject::read()
+{
+    DomintellConnection* con = Services::instance()->getDomintellConnection();
+
+    //if (!readPending_m)
+    {
+        std::string command;
+
+        command.append(std::string("DIM"));
+        command.append(getAddress().substr(0, getAddress().length() - 2));
+        command.append(std::string("%S"));
+    
+        logger_m.errorStream() << "DBIRObject: read " << command
+                               << endlog;
+
+        con->write((uint8_t*)command.c_str(), command.length());
+
+        //readPending_m = true;
+    }
+
+    // If the device didn't answer after 1 second, we consider the object's
+    // default value as the current value to avoid waiting forever.
+    init_m = true;
+}
+
+void DDIMObject::doWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DDIMObject: doWrite"
+                           << endlog;
+}
+
+void DDIMObject::doSend(bool isWrite)
+{
+    logger_m.errorStream() << "DDIMObject: doWrite"
+                           << endlog;
+
+    std::string command;
+
+    command.append(std::string("DIM"));
+    command.append(getAddress());
+    
+    //if (getValue() == "up")
+    //    command.append(std::string("%I%D10"));
+    //else if (getValue() == "down")
+    //    command.append(std::string("%O%D10"));
+    //else
+    {
+        //int value = (int)getFloatValue();
+        command.append(std::string("%D"));
+        command.append(get()->toString());
+    }
+
+    Services::instance()->getDomintellConnection()->write((uint8_t*)command.c_str(), command.length());
+}
+
+void DDIMObject::onWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DDIMObject: Unexpected call of onWrite"
+                           << endlog;
+}
+
+void DDIMObject::onRead(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DDIMObject: Unexpected call of onRead"
+                           << endlog;
+}
+
+void DDIMObject::onResponse(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DDIMObject: Unexpected call of onResponse"
+                           << endlog;
+}
+
+/*----DDIM object------------------------------------------------------------*/
+#endif
 
 BlindsObjectValue::BlindsObjectValue(const std::string& value)
 {
@@ -2630,6 +3140,105 @@ ObjectController* ObjectController::instance()
     return instance_m;
 }
 
+#ifdef OPEN_HOME_AUTOMATION
+void ObjectController::onBusEvent(const uint8_t* buf, int len)
+{
+    std::string type;
+    std::string address;
+    
+    if (len < 12)
+        return;
+
+    type.assign((const char *)buf, 3);
+    address.assign((const char *)(buf + 3), 6);
+    replace(address.begin(), address.end(), ' ', '0');
+
+    if (len == 12 && type == "BIR")
+    {
+        DBIRObject *dbir = NULL;
+        ObjectIdMap_t::iterator it;
+        for (it = objectIdMap_m.begin(); it != objectIdMap_m.end(); it++)
+        {
+            if ((dbir = dynamic_cast<DBIRObject *>((*it).second)) != NULL)
+            {
+                std::string birAddr = dbir->getAddress();
+                if (birAddr.substr(0, birAddr.length() - 2) == address)
+                {
+                    int output = atoi(birAddr.substr(birAddr.length() - 1).c_str());
+                    if (output < 1 || output > 8)
+                        return;
+
+                    int value =
+                        strtol(std::string((const char *)(buf + 10), 2).c_str(),
+                                           (char **)NULL, 16);
+
+                    int chanValue = (value >> (output-1)) & 0x1;
+                    dbir->updateValue(chanValue == 0 ? "off" : "on");
+                }
+            }
+        }
+    }
+    else if (len == 12 && (type == "DET" || type == "IS4" || type == "IS8"))
+    {
+        DISMObject *dism = NULL;
+        ObjectIdMap_t::iterator it;
+        for (it = objectIdMap_m.begin(); it != objectIdMap_m.end(); it++)
+        {
+            if ((dism = dynamic_cast<DISMObject *>((*it).second)) != NULL)
+            {
+                std::string dismAddr = dism->getAddress();
+                if (dismAddr.substr(0, dismAddr.length() - 2) == address)
+                {
+                    int output = atoi(dismAddr.substr(dismAddr.length() - 1).c_str());
+                    if (output < 1 || output > 8) //dism->inputs_m
+                        return;
+
+                    int value =
+                        strtol(std::string((const char *)(buf + 10), 2).c_str(),
+                                           (char **)NULL, 16);
+
+                    int chanValue = (value >> (output-1)) & 0x1;
+                    dism->updateValue(chanValue == 0 ? "off" : "on");
+                }
+            }
+        }
+    }
+    else if (len == 26 && type == "DIM")
+    {
+        //DIM  15C9D 0 0 0 0 0 0 064
+        DDIMObject *dim = NULL;
+        
+        std::string valueStr((const char *)(buf + 10));
+        replace(valueStr.begin(), valueStr.end(), ' ', '0');        
+
+        ObjectIdMap_t::iterator it;
+        for (it = objectIdMap_m.begin(); it != objectIdMap_m.end(); it++)
+        {
+            if ((dim = dynamic_cast<DDIMObject *>((*it).second)) != NULL)
+            {
+                std::string dimAddr = dim->getAddress();
+                if (dimAddr.substr(0, dimAddr.length() - 2) == address)
+                {
+                    int output = atoi(dimAddr.substr(dimAddr.length() - 1).c_str());
+                    if (output < 1 || output > 8)
+                        return;
+
+                    int value =
+                        strtol(valueStr.substr(((output - 1) * 2), 2).c_str(),
+                               (char **)NULL, 16);
+
+                    dim->updateValue(value);
+                }
+            }
+        }
+    }
+    else
+    {
+        printf("Unknown BUS event %s\n", buf);
+    }
+}
+#endif
+
 void ObjectController::onWrite(eibaddr_t src, eibaddr_t dest, const uint8_t* buf, int len)
 {
     std::pair<ObjectMap_t::iterator, ObjectMap_t::iterator> range;
@@ -2669,6 +3278,16 @@ Object* ObjectController::getObject(const std::string& id)
     it->second->incRefCount();
     return (*it).second;
 }
+
+#ifdef OPEN_HOME_AUTOMATION
+bool ObjectController::objectExists(const std::string& id)
+{
+    ObjectIdMap_t::iterator it = objectIdMap_m.find(id);
+    if (it == objectIdMap_m.end())
+    	return false;
+    return true;
+}
+#endif
 
 void ObjectController::addObject(Object* object)
 {

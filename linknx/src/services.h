@@ -28,6 +28,9 @@
 #include "smsgateway.h"
 #include "emailgateway.h"
 #include "knxconnection.h"
+#ifdef OPEN_HOME_AUTOMATION
+#include "domintellconnection.h"
+#endif
 #include "persistentstorage.h"
 #include "suncalc.h"
 
@@ -49,6 +52,9 @@ public:
     void start();
     void stop();
     KnxConnection* getKnxConnection() { return &knxConnection_m; };
+#ifdef OPEN_HOME_AUTOMATION
+    DomintellConnection* getDomintellConnection() { return &domintellConnection_m; };    
+#endif
     SmsGateway* getSmsGateway() { return &smsGateway_m; };
     EmailGateway* getEmailGateway() { return &emailGateway_m; };
     TimerManager* getTimerManager() { return &timers_m; };
@@ -71,6 +77,9 @@ private:
     SmsGateway smsGateway_m;
     EmailGateway emailGateway_m;
     KnxConnection knxConnection_m;
+#ifdef OPEN_HOME_AUTOMATION
+    DomintellConnection domintellConnection_m;
+#endif
     ExceptionDays exceptionDays_m;
     LocationInfo locationInfo_m;
     
