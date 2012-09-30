@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<config>
+    <services>
+        <knxconnection url="ip:127.0.0.1" />
+        <xmlserver type="inet" port="1028"/>
+        <exceptiondays>
+            <date day="1" month="1" />
+            <date day="1" month="5" />
+            <date day="15" month="8" />
+            <date day="25" month="12" />
+            <date day="25" month="4" year="2011" />
+            <date day="2" month="6" year="2011" />
+            <date day="13" month="6" year="2011" />
+            <date day="9" month="4" year="2012" />
+            <date day="17" month="5" year="2012" />
+            <date day="28" month="5" year="2012" />
+            <date day="1" month="4" year="2013" />
+            <date day="9" month="5" year="2013" />
+            <date day="20" month="5" year="2013" />
+            <date day="21" month="4" year="2014" />
+            <date day="29" month="5" year="2014" />
+            <date day="9" month="6" year="2014" />
+        </exceptiondays>
+    </services>
+    <objects>
+        <object type="1.001" id="test_on_off" gad="1/1/1">Objet test</object>
+        <object type="10.001" id="cur_time" gad="1/1/200">Current Time</object>
+        <object type="11.001" id="cur_date" gad="1/1/201" flags="cwtuf">Current Date</object>
+    </objects>
+    <rules>
+        <rule id="cur_time_date">
+            <condition type="timer" trigger="true">
+                <every>1h</every>
+            </condition>
+            <actionlist>
+                <action type="set-value" id="cur_time" value="now" />
+                <action type="set-value" id="cur_date" value="now" />
+            </actionlist>
+        </rule>
+    </rules>
+</config>
