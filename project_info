@@ -12,3 +12,12 @@ cd linknx/linknx/
 find . -name 'CVS' | xargs rm -r 
 mv linknx /src/open-home-automation/
 
+Home automation frntend based on knxweb (revision "10/01/2012 019:00")
+----------------------------------------------------------------------
+
+cd /tmp
+cvs -z3 -d:pserver:anonymous@linknx.cvs.sourceforge.net:/cvsroot/linknx co -D "10/01/2012 019:00" knxweb
+find knxweb -name 'CVS' | xargs rm -r
+mv knxweb/knxweb2 /src/open-home-automation/
+mv knxweb/widgets_knxweb2 /src/open-home-automation/
+
