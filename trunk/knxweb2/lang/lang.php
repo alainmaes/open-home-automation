@@ -22,7 +22,7 @@
 
     if (file_exists("lang/_" . $_config['lang'] . ".php")) {
       include "lang/_" . $_config['lang'] . ".php";
-      if ($_config['superuser']=="true") file_put_contents('lang/_' . $_config['lang'] . '_nottranslate', ''); // clear not translate file
+      if (array_key_exists("superuser", $_config) && $_config['superuser']=="true") file_put_contents('lang/_' . $_config['lang'] . '_nottranslate', ''); // clear not translate file
     } else  $_lang = array();
   }
   initLang();
@@ -42,7 +42,7 @@
   		return $keyContent;
   	} else {
       $_lang[$keyName] = $keyName;
-      if ($_config['superuser']=="true") {
+      if (array_key_exists("superuser", $_config) && $_config['superuser']=="true") {
         nottranslate($keyName, $_config['lang'], $params);
         return "*$keyName*";
       } 
