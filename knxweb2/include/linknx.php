@@ -1,4 +1,4 @@
-<?
+<?php
 
 class Linknx {
 	private $_hostname;

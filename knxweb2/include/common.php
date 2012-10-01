@@ -17,7 +17,7 @@
   }
   /* get version of knxwbe2 in cvs sourceforge */
 
-  if ($_config["superuser"]=="true") {
+  if (array_key_exists("superuser", $_config) && $_config["superuser"]=="true") {
     exec('wget -O /tmp/version_cvs http://linknx.cvs.sourceforge.net/viewvc/linknx/knxweb/knxweb2/version');
     $version_knxweb2_cvs = exec('cat /tmp/version_cvs');
     $MAJ_knxweb2 = !( $version_knxweb2 == $version_knxweb2_cvs );
@@ -116,8 +116,8 @@
 				}
 			}
 
-			$feedbacks=(array)$xml['feedbacks'];
-			if ($feedbacks) {
+			$feedbacks=array_key_exists("feedbacks", $xml) ? (array)$xml['feedbacks'] : NULL;
+			if ($feedbacks && array_key_exists('feedback', $feedbacks)) {
 				if (is_array($feedbacks['feedback'])) {
 					// Multiple feedbacks
 					foreach((array)$feedbacks['setting'] as $v)

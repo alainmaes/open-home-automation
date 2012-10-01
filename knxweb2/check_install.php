@@ -23,8 +23,10 @@ $eibd_running = `ps ax | grep eibd | grep -v grep`;
 if ($eibd_running!="") {
   $eibd_running_param = explode("eibd ",$eibd_running);
   $eibd_running_param = $eibd_running_param[1];
-} else {
+} else if (array_key_exists("eibd", $_config)) {
   $eibd_running_param = $_config["eibd"];
+} else {
+   $eibd_running_param = "";
 }
 
 $linknx_running = `ps ax | grep linknx | grep -v grep`;
@@ -33,7 +35,10 @@ if ($linknx_running!="") {
   $linknx_running_param = $linknx_running_param[1];
   $linknx_param_pos_w = (strpos($linknx_running_param, "-w") >= 0);
 } else {
-  $linknx_running_param = $_config["linknx"];
+  if (array_key_exists("linknx", $_config))
+    $linknx_running_param = $_config["linknx"];
+  else
+    $linknx_running_param = "";
   $linknx_param_pos_w = false;
 }
 
@@ -204,11 +209,11 @@ if (isset($_GET["ajax"])) {
 				<td>
           <?php if ($eibd_running!="") { ?>
             <span class="green">&nbsp;ACTIVE&nbsp;</span>
-            <input type="hidden" name="eibd_param" value="<?=_get('eibd_param',$eibd_running_param)?>">
-            <input type="text" value="<?=_get('eibd_param',$eibd_running_param)?>" size="50" disabled="true">
+            <input type="hidden" name="eibd_param" value="<?php _get('eibd_param',$eibd_running_param)?>">
+            <input type="text" value="<?php _get('eibd_param',$eibd_running_param)?>" size="50" disabled="true">
           <?php } else { ?>
             <span class="red">&nbsp;DESACTIVE&nbsp;</span>
-            <input type="text" name="eibd_param" value="<?=_get('eibd_param',$eibd_running_param)?>" size="50">
+            <input type="text" name="eibd_param" value="<?php _get('eibd_param',$eibd_running_param)?>" size="50">
           <?php } ?>
         </td>
 			</tr>
@@ -217,11 +222,11 @@ if (isset($_GET["ajax"])) {
         <td>
           <?php if ($linknx_running!="") { ?>
             <span class="green">&nbsp;ACTIVE&nbsp;</span>
-            <input type="hidden" name="linknx_param" value="<?=_get('linknx_param',$linknx_running_param)?>">
-            <input type="text" value="<?=_get('linknx_param',$linknx_running_param)?>" size="50" disabled="true">
+            <input type="hidden" name="linknx_param" value="<?php _get('linknx_param',$linknx_running_param)?>">
+            <input type="text" value="<?php _get('linknx_param',$linknx_running_param)?>" size="50" disabled="true">
           <?php } else { ?>
             <span class="red">&nbsp;DESACTIVE&nbsp;</span>
-            <input type="text" name="linknx_param" value="<?=_get('linknx_param',$linknx_running_param)?>" size="50">
+            <input type="text" name="linknx_param" value="<?php _get('linknx_param',$linknx_running_param)?>" size="50">
           <?php } ?>
         </td>
 			</tr>
@@ -270,16 +275,16 @@ if (isset($_GET["ajax"])) {
           $_SESSION['title_knxweb']=$_GET['title_knxweb'];
 					
 ?>
-				Found Linknx version : <?=$info["version"]?><br />
+				Found Linknx version : <?php $info["version"]?><br />
 				<br />
 				With compiled options: <br />
 				<ul>
-					<li>SMS : <?=(($info["haveSMS"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>	
-					<li>E-Mail : <?=(($info["haveEmail"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>	
-					<li>Lua : <?=(($info["haveLua"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>	
-					<li>log4cpp : <?=(($info["haveLog4cpp"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>	
-					<li>Mysql : <?=(($info["haveMysql"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>
-          <li>Linknx have parameter "-w" or "--write=..."	: <?=(($linknx_param_pos_w)?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>
+					<li>SMS : <?php (($info["haveSMS"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>	
+					<li>E-Mail : <?php (($info["haveEmail"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>	
+					<li>Lua : <?php (($info["haveLua"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>	
+					<li>log4cpp : <?php (($info["haveLog4cpp"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>	
+					<li>Mysql : <?php (($info["haveMysql"])?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>
+          <li>Linknx have parameter "-w" or "--write=..."	: <?php (($linknx_param_pos_w)?'<span style="color: #00FF00">Yes</span>':'<span style="color: #FF0000">No</span>')?></li>
 				</ul>
 				<!-- <br />
 				Please ensure that linknx is started with the --write parameter, for example:<br />
