@@ -1,0 +1,1168 @@
+body, html {
+	font-family: Arial, Tahoma, Helvetica, sans-serif;
+	color: #000
+	background: #FFF;
+	margin: 0;
+	padding: 0;
+	background-repeat: no-repeat;
+}
+
+* {
+	font-size: 11px;
+}
+
+img {
+	border: 0px;
+}
+
+#loaderContent{
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 300px;
+  height: 80px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: #000;
+  background-color: #F5F5F5;
+  border: 3px solid #000;
+  padding-top: 15px;
+}
+
+#loaderModal
+{
+	display: none;
+  position:absolute;
+  width:100%;
+  height:100%;
+  background-color:#000000;
+  filter:alpha(opacity=60);
+  opacity:0.8;
+  -moz-opacity:0.8;
+  z-index:999;
+
+  text-align:center;
+  vertical-align:middle;
+}
+
+#wrap {
+	width: 100%;
+}
+
+#appTitle {
+	font-weight: bold;
+	font-size: 14px;
+	text-align: center;
+	padding: 15px;
+}
+
+#leftContent {
+	border-right: 1px solid #8DB2E3;
+	background-color: #DFE8F6;
+	width: 200px;
+	height: 100%;
+	position: fixed;
+	padding-right: 2px;
+	padding-left: 2px;
+	vertical-align: top;
+	float: left;
+}
+
+#leftContent .title { 
+	border: 1px solid #2694e8;
+	background: #3baae3 url(../lib/jquery/css/cupertino/images/ui-bg_highlight-hard_70_000000_1x100.png) 50% 50% repeat-x;
+	font-weight: bold;
+	color: #EEE;
+	height: 15px;
+	padding-left: 5px;
+  margin-top: 2px;
+}
+
+#OptionContainer {
+  border-top: 1px solid #8DB2E3;
+  background-color: #DFE8F6;
+  width: 100%;
+  position: fixed;
+  padding-top: 0;
+  vertical-align: top;
+  position:fixed;
+  bottom:0px;
+  display:block;
+  /*max-height: 90%;*/
+}
+
+#OptionContainer .title { 
+  border: 1px solid #2694e8;
+  background: #3baae3 url(../lib/jquery/css/cupertino/images/ui-bg_highlight-hard_70_000000_1x100.png) 50% 50% repeat-x;
+  font-weight: bold;
+  color: #EEE;
+  height: 15px;
+  padding-left: 5px;
+}
+
+#openOptionContainer {
+  width:32px;
+  position:absolute;
+  left:50%;
+  margin-left:-16px;
+  margin-top: -18px;
+  height: 16px; 
+  radius-topleft: 4px; 
+  -moz-border-radius-topleft: 4px; 
+  -webkit-border-top-left-radius: 4px; 
+  radius-topright: 4px; 
+  -moz-border-radius-topright: 4px; 
+  -webkit-border-top-right-radius: 4px; 
+}
+
+#mainContent {
+	position: relative;
+	vertical-align: top;
+	padding: 5px;
+	overflow: auto;
+	margin-left: 210px;
+}
+
+#leftMenu h3.ui-accordion-header {
+	height: 26px;
+	padding-left: 2px;
+	vertical-align: baseline;
+}
+
+#leftMenu h3.ui-accordion-header * {
+	vertical-align: middle;
+}
+
+#leftMenu h3.ui-corner-bottom {
+    -moz-border-radius-bottomleft: 0;
+    -moz-border-radius-bottomright: 0;
+}
+
+#leftMenu div {
+		padding: 0;
+}
+
+#leftMenu div.header{
+	background-color: #FFF;
+	height: 20px;
+	padding: 3px;
+}
+
+#leftMenu div.content {
+		padding: 5px;
+}
+
+#leftMenu .subItem {
+	background: #deedf7 url(../images/subitem-bg.png) 50% 50% repeat-x;
+	height: 20px;
+//	text-align: center;
+	padding-top: 5px;
+	padding-left: 10px;
+	cursor: pointer;
+	font-weight: bold;
+	color: #444;
+}
+
+#leftMenu .subItem img {
+	padding-right: 10px;
+}
+
+#leftMenu .subItem * {
+	vertical-align: middle;
+}
+
+#propertiesContainer {
+	padding-top: 10px;
+	display: none;
+}
+
+.ui-tabs-nav li {position: relative;}
+.ui-tabs-selected a span {padding-right: 10px;}
+.ui-tabs-close {display: none;position: absolute;top: 5px;right: 0px;z-index: 800;width: 16px;height: 14px;font-size: 10px; font-style: normal;cursor: pointer;}
+.ui-tabs-selected .ui-tabs-close {display: block;}
+
+#objects-tab-table {
+	display: none;
+	width: 100%;
+}
+
+label.error {
+	color: #F00;
+	padding-left: 10px;
+}
+
+table.tableize {
+  padding: 0;
+	border-spacing: 0px;
+	border-collapse: collapse;
+	border: 1px solid #8DB2E3;
+}
+
+table.tableize th {
+	height: 30px;
+}
+
+table.tableize td {
+	height: 22px;
+}
+
+table.tableize tbody tr.odd{
+	background-color: #D9E3EB;
+}
+
+table.tableize tbody tr:hover{
+	background-color: #CCC;
+}
+
+table.tableize tr.row_selected{
+	background-color: #CCC;
+	font-weight: bold;
+}
+
+table.tableize tr.odd.row_selected{
+	background-color: #CCC;
+	font-weight: bold;
+}
+
+table.tableize thead tr .header {
+	background-image: url(../images/tablesorter/bg.gif);
+	background-repeat: no-repeat;
+	background-position: center right;
+	cursor: pointer;
+}
+table.tableize thead tr .headerSortUp {
+	background-image: url(../images/tablesorter/asc.gif);
+}
+table.tableize thead tr .headerSortDown {
+	background-image: url(../images/tablesorter/desc.gif);
+}
+
+table.form {
+	width: 100%;
+}
+
+table.form td {
+	padding: 5px;
+}
+
+#smsgateway-tab-table {
+	width: 100%;
+}
+
+#smsgateway-tab-table th {
+	width: 250px;
+}
+
+#emailserver-tab-table {
+	width: 100%;
+}
+
+#emailserver-tab-table th {
+	width: 250px;
+}
+
+#setupgeneral-tab-table {
+	width: 100%;
+}
+
+#setupgeneral-tab-table th {
+	width: 250px;
+}
+
+#logging-tab-table {
+	width: 100%;
+}
+
+#logging-tab-table th {
+	width: 250px;
+}
+
+#ioports-tab-table {
+	display: none;
+	width: 100%;
+}
+
+#tab-rules {
+	/*height: 700px; ne sert pas !!*/
+}
+
+#action-dialog-list {
+	width: 100%;
+	padding-top: 10px;
+}
+
+#action-dialog-list tbody tr:hover {
+	background-color: #DDDDDD;
+	cursor: pointer;
+}
+
+
+/***************** Resizable ********************/
+.resizeSE {
+	position: absolute;
+	width: 8px;
+	height: 8px;
+	background-color: #333;
+	border: 1px solid #fff;
+	overflow: hidden;
+	bottom: -10px;
+	right: -10px;
+	cursor: se-resize;
+}
+/***************** /Resizable ********************/
+
+
+/***************** Rules ********************/
+
+#tab-rules-container { position:relative; width:100%; height:650px; border:1px dotted red; }
+
+.condition {
+    border:1px dotted gray;
+    position:absolute;
+    color:gray;
+    font-size:0.9em;
+    text-align:center;
+    z-index:40;
+    background-color:white;
+    -o-box-shadow: 0px 0px 17px #044;
+    -webkit-box-shadow: 0px 0px 17px #044;
+    -moz-box-shadow: 0px 0px 17px #044;
+    box-shadow: 0px 0px 17px #044;
+    width: 70px;
+    height:40px;
+}
+
+.or {
+    width: 70px;
+    height:120px;
+}
+
+.not {
+    width: 70px;
+    height:70px;
+}
+
+.object {
+    width: 120px;
+    height:54px;
+}
+
+.object-src {
+    width: 120px;
+    height:66px;
+}
+
+.object-compare {
+    width: 120px;
+    height:52px;
+}
+
+.time-counter {
+    width: 120px;
+    height:42px;
+}
+
+.timer {
+    width: 120px;
+    height:26px;
+    padding-top: 10px;
+}
+
+.and {  
+    width: 70px;
+    height:120px;
+}
+
+.action, #action, #actionlist_ontrue, #actionlist_onfalse {  
+    border:1px dotted gray;
+    width: 70px;
+    height:40px;
+    position:absolute;
+    color:gray;
+    font-size:0.9em;
+    text-align:center;
+    z-index:40;
+    background-color:white;
+    -o-box-shadow: 0px 0px 17px #044;
+    -webkit-box-shadow: 0px 0px 17px #044;
+    -moz-box-shadow: 0px 0px 17px #044;
+    box-shadow: 0px 0px 17px #044;
+    float: right;
+}
+#action {
+    top: 200px;
+    right: 200px;
+    width: 70px;
+    height:40px;
+}
+#actionlist_ontrue {  
+    top: 150px;
+    right: 100px;
+    width: 70px;
+    height:120px;
+}
+#actionlist_onfalse {  
+    top: 250px;
+    right: 100px;
+    width: 70px;
+    height:120px;
+}
+
+.drag-locked { border:1px solid red; }
+._jsPlumb_endpoint { z-index:50; }
+._jsPlumb_connector { z-index:1; }
+.dropHover { border:1px dotted red; }
+.dragActive { border:2px dotted orange; }
+.cmdLink { font-size:0.80em;}
+
+.hide{ display: none; }
+.slidermanuelautorule {
+  background: url("../images/manuAuto.png") no-repeat scroll 0 0 transparent;
+  border: 1px solid black;
+  border-radius: 6px 6px 6px 6px;
+  cursor: pointer;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  width: 64px;
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+}
+
+/***************** /Rules ********************/
+/***************** Events ********************/
+
+.event {
+  margin: 10px;
+  height: 40px;
+  text-align: left;
+  border-radius: 1em;
+  position: relative;
+}
+.event:hover {
+  border: 1px solid #0070A3;
+}
+.play {
+  cursor: pointer;
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  width: 32px;
+  height: 32px;
+  text-align: right;
+  background: url('../images/play.png') no-repeat scroll 0pt 0pt transparent;
+  background-position: 0px 0px ;
+  padding: 0;
+  margin: 0;
+  text-align:center;
+  vertical-align:middle;
+}
+.play:hover {
+  -moz-box-sizing: border-box;
+  -moz-outline-radius: 6px;
+  -moz-user-select: none;
+  cursor: pointer;
+  outline: 2px solid #0070A3;
+}
+.play:active {
+  outline: 2px solid red;
+}  
+.idevent {
+  cursor: default;
+  position: absolute;
+  top: 20px;
+  margin-top: -0.7em;
+  left: 45px;
+  height: 1em;
+  text-align: left;
+}
+.commandevent {
+  position: absolute;
+  top: 10px;
+  right: 84px;
+  width: 60px;
+  height: 20px;
+  text-align: right;
+}
+.commandevent img {
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+}
+.slidermanuelautoevent {
+  cursor: pointer;
+  border: 1px solid black;
+  border-radius: 6px;
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  width: 64px;
+  height: 32px;
+  text-align: right;
+  background: url('../images/manuAuto.png') no-repeat scroll 0pt 0pt transparent;
+  background-position: 0px 0px ;
+  padding: 0;
+  margin: 0;
+  text-align:center;
+  vertical-align:middle;
+}
+.slidermanuel {
+  background-position: -32px 0px;
+  padding: 0; 
+}
+.sliderauto {
+  background-position: 0px 0px ;
+  padding: 0; 
+}
+
+.commandevent img:hover {
+  -moz-box-sizing: border-box;
+  -moz-outline-radius: 6px;
+  -moz-user-select: none;
+  cursor: pointer;
+  outline: 2px solid #0070A3;
+}
+
+#tab-event-properties div {
+  padding: 3px;
+}
+#tab-events-container {
+  border: 1px dotted red;
+  min-height: 650px;
+  position: relative;
+  width: 100%;
+}
+#event-action-dialog {
+  min-height: 300px;
+  position: relative;
+  width: 100%;
+}
+
+#event-action-dialog-list tr:hover {
+  -moz-box-sizing: border-box;
+  -moz-outline-radius: 6px;
+  -moz-user-select: none;
+  cursor: pointer;
+  outline: 1px solid #0070A3;
+}
+#event-action-dialog-select {
+  margin: 5px;
+}
+#tab-event-properties:hover {
+  min-width: 750px;
+}
+/***************** /Events ********************/
+
+/************ Images Manager ****************/
+
+#images-manager-dialog .thumb {
+  background-color: #EEEEEE;
+  border: 1px solid #CCCCCC;
+  float: left;
+  font-size: 9px;
+  height: 150px;
+  margin-right: 15px;
+  margin-top: 15px;
+  position: relative;
+  text-align: center;
+  width: 120px;
+}
+
+#images-manager-dialog .thumb:hover {
+	background-color: #DDDDDD;
+}
+
+
+#images-manager-dialog .thumb .image {
+  float: left;
+  height: 120px;
+  width: 120px;
+	text-align: center;
+}
+
+#images-manager-dialog .thumb .image img {
+	margin-top: auto;
+	margin-bottom: auto;
+}
+
+#images-manager-dialog .thumb .close {
+	position: absolute;
+	left: 105px;
+	top: 5px;
+}
+
+#images-manager-dialog .thumb .label {
+  float: left;
+  width: 120px;
+  text-align: center;
+  margin: 0 auto;
+}
+
+#images-manager-dialog .url {
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+
+#images-manager-dialog .info {
+	padding-top: 10px;
+}
+/************ /Images Manager ****************/
+
+
+/***************** Design ********************/
+
+
+#widgetdiv {
+	width: 100%;
+	height: 1280px;
+	border: 1px #FF0000 dotted;
+}
+
+#widgetdiv.selected { 
+	border: 1px dashed #000000;
+}
+
+.selected { 
+	border: 1px dashed #CCCCCC;
+}
+
+#tab-design-menu {
+	width: 180px;
+	top: 40px;
+	left: 600px;
+	position: absolute;
+}
+
+div.widget {
+	position: absolute;
+/*	width: 30px;
+	height: 30px; */
+	background-repeat: no-repeat;
+} 
+
+div.subpage {
+	position: absolute;
+	width: 100px;
+	height: 100px;
+}
+
+div.subpagedialog {
+  display: block;
+  position: relative;
+} 
+
+#tab-design-properties {
+	background-color: #F2F5F7;
+	font-size: 10px;
+	width: 250px;
+	top: 350px;
+	left: 600px;
+	position: absolute;
+	border: 1px #DDDDDD solid;
+  z-index: 700;
+}
+
+#tab-design-properties .header {
+	line-height: 21px;
+	font-size: 11px;
+	padding-top: 3px;
+	padding-left: 6px;
+}
+
+#tab-design-widget-buttons {
+	padding: 5px;
+}
+
+#tab-design-properties table {
+	width: 100%;
+}
+
+#tab-design-properties table tbody th {
+	height: 20px;
+	width: 40%;
+	text-align: left;
+}
+
+#tab-design-properties table th.comment {
+	background-color: #000;
+	color: #FFF;
+	text-align: center;
+	height: 20px;
+}
+
+#tab-design-properties table th.separator {
+    background-color: #808080;
+    height: 5px;
+    text-align: center;
+}
+
+#tab-design-properties table tbody td {
+	height: 20px;
+	width: 60%;
+}
+
+#tab-design-properties table tbody td input {
+	border: 0;
+	width: 100%;
+}
+
+#tab-design-properties table tbody td button {
+	width: 100%;
+}
+
+#tab-design-properties table tbody td select {
+	border: 0;
+	width: 100%;
+}
+
+#tab-design-properties table tbody td:last {
+	background-color: #F00;
+}
+
+#tab-designedit {
+  background-color: #FFFFFF;
+  padding: 0px;
+  position: relative;
+  width: 100%;
+  height: 1280px;
+}
+
+/* tab-design-list-widgets : list Widgets*/
+
+#tab-design-list-widgets {
+	background-color: #F2F5F7;
+	font-size: 10px;
+	width: 250px;
+	top: 20px;
+	left: 600px;
+	position: absolute;
+	border: 1px #DDDDDD solid;
+  z-index: 700;
+}
+
+#tab-design-list-widgets .header {
+	line-height: 21px;
+	font-size: 11px;
+	padding-top: 3px;
+	padding-left: 6px;
+}
+
+#tab-design-widget-buttons {
+	padding: 5px;
+}
+
+#tab-design-list-widgets table {
+	width: 100%;
+}
+
+#tab-design-list-widgets table tbody th {
+	height: 20px;
+	width: 40%;
+	text-align: left;
+}
+
+#tab-design-list-widgets table tbody td {
+	height: 20px;
+	width: 60%;
+}
+
+#tab-design-list-widgets table tbody td input {
+	border: 0;
+	width: 100%;
+}
+
+#tab-design-list-widgets table tbody td:last {
+	background-color: #F00;
+}
+
+#tab-design-list-widgets table tbody tr.active {
+	background-color: #DEEDF7;
+}
+
+/***************** /Design ********************/
+
+/***************** SubPages ********************/
+
+#widgetsubpagediv {
+	width: 128px;
+	height: 128px;
+	border: 1px #FF0000 dotted;
+}
+
+#widgetsubpagediv.selected { 
+	border: 1px dashed #000000;
+}
+
+#tab-subpages-menu {
+	width: 180px;
+	top: 40px;
+	left: 600px;
+	position: absolute;
+}
+
+#tab-subpages-properties {
+	background-color: #F2F5F7;
+	font-size: 10px;
+	width: 270px;
+	top: 300px;
+	left: 600px;
+	position: absolute;
+	border: 1px #DDDDDD solid;
+}
+
+#tab-subpages-properties .header {
+	line-height: 21px;
+	font-size: 11px;
+	padding-top: 3px;
+	padding-left: 6px;
+}
+
+#tab-subpages-widget-buttons {
+	padding: 5px;
+}
+
+#tab-subpages-properties table {
+	width: 100%;
+}
+
+#tab-subpages-properties table tbody th {
+	height: 20px;
+	width: 40%;
+	text-align: left;
+}
+
+#tab-subpages-properties table th.comment {
+	background-color: #000;
+	color: #FFF;
+	text-align: center;
+	height: 20px;
+}
+
+#tab-subpages-properties table tbody td {
+	height: 20px;
+	width: 60%;
+}
+
+#tab-subpages-properties table tbody td input {
+	border: 0;
+	width: 100%;
+}
+
+#tab-subpages-properties table tbody td button {
+	width: 100%;
+}
+
+#tab-subpages-properties table tbody td select {
+	border: 0;
+	width: 100%;
+}
+
+#tab-subpages-properties table tbody td:last {
+	background-color: #F00;
+}
+
+#tab-subpageedit {
+  background-color: #FFFFFF;
+  padding: 0;
+  position: relative;
+  width: 100%;
+  height: 1280px;
+}
+
+#tab-subpages-parameters-list {
+	width: 100%;
+}
+
+/* tab-subpages-list-widgets : list Widgets*/
+
+#tab-subpages-list-widgets {
+	background-color: #F2F5F7;
+	font-size: 10px;
+	width: 250px;
+	top: 20px;
+	left: 600px;
+	position: absolute;
+	border: 1px #DDDDDD solid;
+}
+
+#tab-subpages-list-widgets .header {
+	line-height: 21px;
+	font-size: 11px;
+	padding-top: 3px;
+	padding-left: 6px;
+}
+
+#tab-subpages-widget-buttons {
+	padding: 5px;
+}
+
+#tab-subpages-list-widgets table {
+	width: 100%;
+}
+
+#tab-subpages-list-widgets table tbody th {
+	height: 20px;
+	width: 40%;
+	text-align: left;
+}
+
+#tab-subpages-list-widgets table tbody td {
+	height: 20px;
+	width: 60%;
+}
+
+#tab-subpages-list-widgets table tbody td input {
+	border: 0;
+	width: 100%;
+}
+
+#tab-subpages-list-widgets table tbody td:last {
+	background-color: #F00;
+}
+
+#tab-subpages-list-widgets table tbody tr.active {
+	background-color: #DEEDF7;
+}
+
+
+/***************** /SubPages ********************/
+
+
+/***************** Admin ********************/
+#tab-admin {
+  position: relative;
+}
+.titleadmin {
+    font-size: 20px;
+    font-weight: bold;
+    background-color: #000;
+    color: #FFF;
+    height: 40px;
+    line-height: 36px;
+    padding-left: 5px;
+    margin-bottom: 5px;
+}
+
+.titleadmin a{
+    font-size: 13px;
+    color: #AAA;
+}
+
+.titleadmin2 {
+    font-size: 14px;
+    background-color: #DDD;
+    color: #000;
+    height: 25px;
+    line-height: 22px;
+    padding-left: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.codeadmin {
+    background-color: #EEE;
+    border: 1px solid #999;
+    padding: 3px;
+}
+.red {
+    background-color: #DF0000;
+    color: #FFFFFF;
+    font-family: verdana,helvetica;
+    font-size: 10px;
+    font-weight: bold;
+}
+.green {
+    background-color: #00DF00;
+    color: #FFFFFF;
+    font-family: verdana,helvetica;
+    font-size: 10px;
+    font-weight: bold;
+}
+/***************** /Admin ********************/
+
+/***************** Edit Mobile ********************/
+
+#tab-design-mobile-properties {
+	background-color: #F2F5F7;
+	font-size: 10px;
+	width: 250px;
+	top: 350px;
+	left: 600px;
+	position: absolute;
+	border: 1px #DDDDDD solid;
+}
+
+#tab-design-mobile-properties .header {
+	line-height: 21px;
+	font-size: 11px;
+	padding-top: 3px;
+	padding-left: 6px;
+}
+
+#tab-design-mobile-widget-buttons {
+	padding: 5px;
+}
+
+#tab-design-mobile-properties table {
+	width: 100%;
+}
+
+#tab-design-mobile-properties table tbody th {
+	height: 20px;
+	width: 40%;
+	text-align: left;
+}
+
+#tab-design-mobile-properties table th.comment {
+	background-color: #000;
+	color: #FFF;
+	text-align: center;
+	height: 20px;
+}
+
+#tab-design-mobile-properties table th.separator {
+    background-color: #808080;
+    height: 5px;
+    text-align: center;
+}
+
+#tab-design-mobile-properties table tbody td {
+	height: 20px;
+	width: 60%;
+}
+
+#tab-design-mobile-properties table tbody td input {
+	border: 0;
+	width: 100%;
+}
+
+#tab-design-mobile-properties table tbody td button {
+	width: 100%;
+}
+
+#tab-design-mobile-properties table tbody td select {
+	border: 0;
+	width: 100%;
+}
+
+#tab-design-mobile-properties table tbody td:last {
+	background-color: #F00;
+}
+
+
+#tab-design-mobile-list-widgets {
+	background-color: #F2F5F7;
+	font-size: 10px;
+	width: 250px;
+	top: 20px;
+	left: 600px;
+	position: absolute;
+	border: 1px #DDDDDD solid;
+}
+
+#tab-design-mobile-list-widgets .header {
+	line-height: 21px;
+	font-size: 11px;
+	padding-top: 3px;
+	padding-left: 6px;
+}
+
+#tab-designv-widget-buttons {
+	padding: 5px;
+}
+
+#tab-design-mobile-list-widgets table {
+	width: 100%;
+}
+
+#tab-design-mobile-list-widgets table tbody th {
+	height: 20px;
+	width: 40%;
+	text-align: left;
+}
+
+#tab-design-mobile-list-widgets table tbody td {
+	height: 20px;
+	width: 60%;
+}
+
+#tab-design-mobile-list-widgets table tbody td input {
+	border: 0;
+	width: 100%;
+}
+
+#tab-design-mobile-list-widgets table tbody td:last {
+	background-color: #F00;
+}
+
+#tab-design-mobile-list-widgets table tbody tr.active {
+	background-color: #DEEDF7;
+}
+
+/***************** /Edit Mobile ********************/
+
+html.knm {
+  -moz-transition: all 5000ms ease-in-out;
+  -o-transition: all 5000ms ease-in-out;
+  -webkit-transition: all 5000ms ease-in-out;
+  transition: all 5000ms ease-in-out;
+  transform:rotate(180deg);
+  -webkit-transform:rotate(180deg);
+  -moz-transform:rotate(180deg);
+}
+
+#creditsContent.knm {
+  -moz-transition: all 5000ms ease-in-out;
+  -o-transition: all 5000ms ease-in-out;
+  -webkit-transition: all 5000ms ease-in-out;
+  transition: all 5000ms ease-in-out;
+  transform:rotate(-180deg);
+  -webkit-transform:rotate(-180deg);
+  -moz-transform:rotate(-180deg);
+}
+#creditsContent {
+  background-color: #F5F5F5;
+  border: 3px solid #000000;
+  color: #000000;
+  font-size: 14px;
+  font-weight: bold;
+  height: 80px;
+  left: 0;
+  padding-top: 15px;
+  position: absolute;
+  text-align: center;
+  top: 0;
+  width: 300px;
+  display: none;
+  vertical-align: middle;
+  z-index: 999;
+}
+
+/* for hide title of Dialog add attribute like : .dialog({ ..., dialogClass: 'notitledialog' }) */
+.notitledialog .ui-dialog-titlebar {display:none}
+
+/***************** multipleObject ********************/
+.ui-combobox {
+  position: relative;
+  display: inline-block;
+}
+.ui-combobox .ui-button {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  margin-left: -1px;
+  padding: 0;
+}
+.ui-combobox .ui-autocomplete-input {
+  margin: 0;
+  padding: 0.3em;
+}
+.ui-autocomplete {
+  max-height: 280px;
+  overflow: auto;
+}
+/***************** /multipleObject  ********************/
