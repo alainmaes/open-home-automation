@@ -29,6 +29,10 @@
 #include <mysql/mysql.h>
 #endif
 
+#ifdef OPEN_HOME_AUTOMATION
+#include "sqlite3.h"
+#endif
+
 class PersistentStorage
 {
 public:
@@ -86,5 +90,28 @@ protected:
     static Logger& logger_m;
 };
 #endif // HAVE_MYSQL
+
+#ifdef OPEN_HOME_AUTOMATION
+class SQLitePersistentStorage : public PersistentStorage
+{
+public:
+    SQLitePersistentStorage(ticpp::Element* pConfig);
+    virtual ~SQLitePersistentStorage();
+
+    virtual void exportXml(ticpp::Element* pConfig);
+
+    virtual void write(const std::string& id, const std::string& value);
+    virtual std::string read(const std::string& id, const std::string& defval="");
+    virtual void writelog(const std::string& id, const std::string& value);
+private:
+    sqlite3 *db;
+
+    std::string db_m;
+    std::string table_m;
+    std::string logtable_m;
+protected:
+    static Logger& logger_m;
+};
+#endif // OPEN_HOME_AUTOMATION
 
 #endif

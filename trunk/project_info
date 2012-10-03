@@ -21,3 +21,23 @@ find knxweb -name 'CVS' | xargs rm -r
 mv knxweb/knxweb2 /src/open-home-automation/
 mv knxweb/widgets_knxweb2 /src/open-home-automation/
 
+patches of directories
+----------------------
+
+diff -cr dir1 dir2 > /tmp/patch
+patch -p0 < /tmp/patch
+
+
+DNS-320
+-------
+
+make TMPDIR=/ffp/tmp
+
+
+SQLITE files
+------------
+root@dlink-E253DD:/mnt/HD/HD_a2/projects/open-home-automation/linknx# ls sqlite/     
+INSTALL      README	   config.sub	 install-sh  shell.c	sqlite3.h      sqlite3ext.h
+Makefile.am  aclocal.m4    configure.ac  ltmain.sh   sqlite3.1	sqlite3.pc     tea
+Makefile.in  config.guess  depcomp	 missing     sqlite3.c	sqlite3.pc.in
+

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<widget>
+	<name>gmaps</name>
+	<label>gmaps</label>
+	<description>gmaps tracking</description>
+	<version>1.0</version>
+	<category>Basic widgets</category>
+	<settings>
+                <setting id="feedback-object" label="object" type="object" />
+		<setting id="gmaps" label="GMAPS" type="text" />
+	</settings>
+	<feedbacks>
+		<feedback id="feedback-object" />
+	</feedbacks>
+</widget>
