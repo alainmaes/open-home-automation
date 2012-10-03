@@ -55,7 +55,7 @@
 		// I add a marker to the map using the given latitude
 		// and longitude location.
 
-	        window.addMarker = function( latitude, longitude, label, center ){
+	        function addMarker ( latitude, longitude, label, center ){
 			// Create the marker - this will automatically place it
 			// on the existing Google map (that we pass-in).
 			var marker = new google.maps.Marker({
@@ -76,7 +76,7 @@
 		};
 
 		// I update the marker's position and label.
-		function updateMarker( marker, latitude, longitude, label ){
+		function updateMarker( marker, latitude, longitude, label, center ){
 			// Update the position.
 			marker.setPosition(
 				new google.maps.LatLng(
