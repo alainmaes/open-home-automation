@@ -40,6 +40,12 @@ PersistentStorage* PersistentStorage::create(ticpp::Element* pConfig)
         return new MysqlPersistentStorage(pConfig);
     }
 #endif // HAVE_MYSQL
+#ifdef OPEN_HOME_AUTOMATION
+    else if (type == "sqlite")
+    {
+        return new SQLitePersistentStorage(pConfig);
+    }
+#endif
     else if (type == "")
     {
         return 0;
@@ -241,3 +247,148 @@ void MysqlPersistentStorage::writelog(const std::string& id, const std::string& 
     }
 }
 #endif // HAVE_MYSQL
+
+#ifdef OPEN_HOME_AUTOMATION
+Logger& SQLitePersistentStorage::logger_m(Logger::getInstance("SQLitePersistentStorage"));
+
+SQLitePersistentStorage::SQLitePersistentStorage(ticpp::Element* pConfig)
+{
+    int rc = 0;
+    char *zErrMsg = 0;
+
+    db_m = pConfig->GetAttribute("db");
+    if (db_m == "")
+        throw ticpp::Exception("SQLitePersistentStorage: database name missing");
+
+    table_m = pConfig->GetAttribute("table");
+    if (table_m == "")
+        throw ticpp::Exception("SQLitePersistentStorage: objects table name missing");
+
+    logtable_m = pConfig->GetAttribute("logtable");
+    if (logtable_m == "")
+        throw ticpp::Exception("SQLitePersistentStorage: log table name missing");
+
+    rc = sqlite3_open(db_m.c_str(), &db);
+    if (rc)
+    {
+        logger_m.errorStream() << "Can't open database: " << sqlite3_errmsg(db) << endlog;
+        sqlite3_close(db);
+	throw ticpp::Exception("SQLitePersistentStorage: error initializing client");
+    }
+
+    std::stringstream sql;
+    sql << "CREATE TABLE IF NOT EXISTS `" << table_m << "` (object VARCHAR(32) NOT NULL PRIMARY KEY, value VARCHAR(32));";
+
+    rc = sqlite3_exec(db, sql.str().c_str(), NULL, 0, &zErrMsg);
+    if (rc)
+    {
+        logger_m.errorStream() << "Can't create table: " << zErrMsg << endlog;
+        sqlite3_close(db);
+	throw ticpp::Exception("SQLitePersistentStorage: error initializing client");
+    }
+
+    std::stringstream sql2;
+    sql2 << "CREATE TABLE IF NOT EXISTS `" << logtable_m << "` (id INTEGER PRIMARY KEY AUTOINCREMENT, object VARCHAR(32) NOT NULL, value VARCHAR(32), ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
+    rc = sqlite3_exec(db, sql2.str().c_str(), NULL, 0, &zErrMsg);
+    if (rc)
+    {
+        logger_m.errorStream() << "Can't create table: " << zErrMsg << endlog;
+        sqlite3_close(db);
+	throw ticpp::Exception("SQLitePersistentStorage: error initializing client");
+    }
+}
+
+SQLitePersistentStorage::~SQLitePersistentStorage()
+{
+    sqlite3_close(db);
+}
+
+void SQLitePersistentStorage::exportXml(ticpp::Element* pConfig)
+{
+    pConfig->SetAttribute("type", "sqlite");
+    pConfig->SetAttribute("db", db_m);
+    pConfig->SetAttribute("table", table_m);
+    pConfig->SetAttribute("logtable", logtable_m);
+}
+
+void SQLitePersistentStorage::write(const std::string& id, const std::string& value)
+{
+    char *zErrMsg = 0;
+
+    if (table_m == "")
+        return;
+
+    logger_m.infoStream() << "Writing '" << value << "' for object '" << id << "'" << endlog;
+
+    std::stringstream sql;
+    sql << "INSERT OR IGNORE INTO `" << table_m << "` (`object`, `value`) VALUES ('" << id << "', '" << value << "');";
+    int rc = sqlite3_exec(db, sql.str().c_str(), NULL, 0, &zErrMsg);
+    if (rc)
+    {
+        logger_m.errorStream() << "Can't insert record: " << zErrMsg << endlog;
+    }
+
+    std::stringstream sql2;
+    sql2 << "UPDATE `" << table_m << "` SET value = '" << value << "' WHERE object LIKE '" << id << "';";
+    rc = sqlite3_exec(db, sql2.str().c_str(), NULL, 0, &zErrMsg);
+    if (rc)
+    {
+        logger_m.errorStream() << "Can't update record: " << zErrMsg << endlog;
+    }
+}
+
+std::string SQLitePersistentStorage::read(const std::string& id, const std::string& defval)
+{
+    std::string value;
+    
+    if (table_m == "")
+    {
+        value = defval;
+    }
+    else
+    {
+        std::stringstream sql;
+        sql << "SELECT `value` FROM `" << table_m << "` WHERE `object`='" << id << "';";
+
+        sqlite3_stmt *stmt;
+        if (sqlite3_prepare_v2(db, sql.str().c_str(), -1, &stmt, 0) == SQLITE_OK)
+        {
+            int result = sqlite3_step(stmt);
+            if (result == SQLITE_ROW)
+            {
+                //processline
+                value = std::string((const char *)sqlite3_column_text(stmt, 0));
+            }
+            else
+            {
+                value = defval;
+            }    
+        }
+        else
+        {
+            value = defval;
+            logger_m.errorStream() << "Error executing: '" << sql.str() << endlog;
+        }
+    }
+
+    logger_m.infoStream() << "Reading '" << value << "' for object '" << id << "'" << endlog;
+    return value;
+}
+
+void SQLitePersistentStorage::writelog(const std::string& id, const std::string& value)
+{
+    char *zErrMsg = 0;
+
+    if (logtable_m == "")
+        return;
+    logger_m.infoStream() << "Writing log '" << value << "' for object '" << id << "'" << endlog;
+
+    std::stringstream sql;
+    sql << "INSERT OR IGNORE INTO `" << logtable_m << "` (`object`, `value`) VALUES ('" << id << "', '" << value << "');";
+    int rc = sqlite3_exec(db, sql.str().c_str(), NULL, 0, &zErrMsg);
+    if (rc)
+    {
+        logger_m.errorStream() << "Can't insert record: " << zErrMsg << endlog;
+    }
+}
+#endif // OPEN_HOME_AUTOMATION
