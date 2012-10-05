@@ -418,6 +418,9 @@ private:
         VarValue = 4,
     };
     std::string id_m;
+#ifdef OPEN_HOME_AUTOMATION
+    ContactObject *object_m;
+#endif
     std::string value_m;
 };
 

@@ -94,6 +94,8 @@ Object* Object::create(const std::string& type)
         return new DISMObject(8);
     else if (type == "DDIM01")
         return new DDIMObject();
+    else if (type == "contact")
+        return new ContactObject();
 #endif
     else
         return 0;
@@ -3122,6 +3124,90 @@ void String14AsciiObject::setStringValue(const std::string& value)
     String14AsciiObjectValue val(value);
     Object::setValue(&val);
 }
+
+#ifdef OPEN_HOME_AUTOMATION
+Logger& ContactObject::logger_m(Logger::getInstance("ContactObject"));
+
+ContactObject::ContactObject()
+{}
+
+ContactObject::~ContactObject()
+{}
+
+void ContactObject::importXml(ticpp::Element* pConfig)
+{
+    Object::importXml(pConfig);
+
+    std::string fName = pConfig->GetAttribute("firstName");
+    if (fName == "")
+        throw ticpp::Exception("Missing or empty first name");
+
+    if (firstName_m == "")
+        firstName_m = fName;
+
+    std::string lName = pConfig->GetAttribute("lastName");
+    if (lName == "")
+        throw ticpp::Exception("Missing or empty last name");
+
+    if (lastName_m == "")
+        lastName_m = lName;
+
+    std::string hPhone = pConfig->GetAttribute("homePhone");
+    if (hPhone != "" && homePhone_m == "")
+        homePhone_m = hPhone;
+
+    std::string oPhone = pConfig->GetAttribute("officePhone");
+    if (oPhone != "" && officePhone_m == "")
+        officePhone_m = oPhone;
+
+    std::string mPhone = pConfig->GetAttribute("mobilePhone");
+    if (mPhone != "" && mobilePhone_m == "")
+        mobilePhone_m = mPhone;
+
+    std::string email = pConfig->GetAttribute("email");
+    if (email != "" && email_m == "")
+        email_m = email;
+
+    std::string birthday = pConfig->GetAttribute("birthday");
+    if (birthday != "" && birthday_m == "")
+    {
+        if(birthday.find("/", 0) == std::string::npos)
+        {
+		std::stringstream msg;
+		msg << "Slash character '/' missing in birthday: " << birthday <<std::endl;
+		throw ticpp::Exception(msg.str());
+    	}
+
+        birthday_m = birthday;
+    }
+}
+
+void ContactObject::exportXml(ticpp::Element* pConfig)
+{
+    Object::exportXml(pConfig);
+
+    if (firstName_m != "")
+        pConfig->SetAttribute("firstName", firstName_m);
+
+    if (lastName_m != "")
+        pConfig->SetAttribute("lastName", lastName_m);
+
+    if (homePhone_m != "")
+        pConfig->SetAttribute("homePhone", homePhone_m);
+
+    if (officePhone_m != "")
+        pConfig->SetAttribute("officePhone", officePhone_m);
+
+    if (mobilePhone_m != "")
+        pConfig->SetAttribute("mobilePhone", mobilePhone_m);
+
+    if (email_m != "")
+        pConfig->SetAttribute("email", email_m);
+
+    if (birthday_m != "")
+        pConfig->SetAttribute("birthday", birthday_m);
+}
+#endif
 
 ObjectController::ObjectController()
 {}
