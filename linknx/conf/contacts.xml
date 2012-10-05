@@ -15,5 +15,6 @@
     </rules>
     <services>
         <xmlserver type="inet" port="10280"/>
+        <emailserver type="smtp" host="smtp://smtp.myprovider.com" from="me@provider.com" login="myLogin" pass="myPass"/>
     </services>
 </config>
