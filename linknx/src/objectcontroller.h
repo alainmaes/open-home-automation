@@ -1063,6 +1063,33 @@ protected:
     static Logger& logger_m;
 };
 
+#ifdef OPEN_HOME_AUTOMATION
+class ContactObject : public StringObject
+{
+public:
+    ContactObject();
+    virtual ~ContactObject();
+ 
+    virtual std::string getType() { return "contact"; };
+    virtual void importXml(ticpp::Element* pConfig);
+    virtual void exportXml(ticpp::Element* pConfig);
+
+    const char * getMobilePhone() { return mobilePhone_m.c_str(); }
+    const char * getEmail() { return email_m.c_str(); }
+
+protected:
+    static Logger& logger_m;
+    std::string firstName_m;
+    std::string lastName_m;
+    std::string homePhone_m;
+    std::string officePhone_m;
+    std::string mobilePhone_m;
+    std::string email_m;
+    std::string birthday_m;
+};
+
+#endif
+
 #ifndef OPEN_HOME_AUTOMATION
 class ObjectController : public TelegramListener
 #else

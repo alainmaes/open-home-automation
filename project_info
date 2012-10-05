@@ -34,10 +34,9 @@ DNS-320
 make TMPDIR=/ffp/tmp
 
 
-SQLITE files
-------------
-root@dlink-E253DD:/mnt/HD/HD_a2/projects/open-home-automation/linknx# ls sqlite/     
-INSTALL      README	   config.sub	 install-sh  shell.c	sqlite3.h      sqlite3ext.h
-Makefile.am  aclocal.m4    configure.ac  ltmain.sh   sqlite3.1	sqlite3.pc     tea
-Makefile.in  config.guess  depcomp	 missing     sqlite3.c	sqlite3.pc.in
+android http autologin
+----------------------
+http://code.google.com/p/sbautologin/source/browse/src/org/crocodile/sbautologin/Starbucks.java
+http://developer.android.com/guide/webapps/webview.html
+http://www.linkedin.com/groups/Can-anyone-tell-me-how-76373.S.90900785
 

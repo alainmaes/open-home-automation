@@ -1205,11 +1205,29 @@ SendSmsAction::SendSmsAction() : varFlags_m(0)
 {}
 
 SendSmsAction::~SendSmsAction()
-{}
+{
+#ifdef OPEN_HOME_AUTOMATION
+    if (object_m)
+        object_m->decRefCount();
+#endif
+}
 
 void SendSmsAction::importXml(ticpp::Element* pConfig)
 {
     id_m = pConfig->GetAttribute("id");
+#ifdef OPEN_HOME_AUTOMATION
+    if (object_m)
+        object_m->decRefCount();
+    if (ObjectController::instance()->objectExists(id_m))
+    {
+        Object* obj = ObjectController::instance()->getObject(id_m); 
+        object_m = dynamic_cast<ContactObject*>(obj);
+        if (!object_m)
+        {
+	    obj->decRefCount();
+        }
+    }
+#endif
     value_m = pConfig->GetAttribute("value");
     if (pConfig->GetAttribute("var") == "true")
     {
@@ -1244,6 +1262,14 @@ void SendSmsAction::Run (pth_sem_t * stop)
         return;
 
     std::string id = id_m;
+#ifdef OPEN_HOME_AUTOMATION
+    if (object_m && object_m->getMobilePhone() != "")
+    {
+        id = object_m->getMobilePhone();
+        logger_m.infoStream() << "SendSmsAction: using number '" << id <<
+                                 "' from object '" << id << "'" << endlog;
+    }
+#endif
     if (varFlags_m & VarId)
         parseVarString(id);
     std::string value = value_m;
