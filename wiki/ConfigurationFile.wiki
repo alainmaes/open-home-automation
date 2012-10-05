@@ -2,12 +2,7 @@
 
 = Introduction =
 
-Add your content here.
+This page describes the XML format used in the configuration file of the backend.
 
 
 = Details =
-
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
