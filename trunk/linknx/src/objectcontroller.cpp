@@ -3248,9 +3248,6 @@ void GLatitudeObject::exportXml(ticpp::Element* pConfig)
 
     if (badge_m != "")
         pConfig->SetAttribute("badge", badge_m);
-
-    if (location_m != "")
-        pConfig->SetText(location_m);
 }
 
 #ifdef HAVE_LIBCURL
@@ -3336,6 +3333,7 @@ void GLatitudeObject::onChange(Object* object)
                                            location_m.append(",");
                                            location_m.append(lon);
                                            logger_m.errorStream() << "location: " << location_m << endlog;
+                                           setValue(location_m);
                                        }
                                    }
                                 }
