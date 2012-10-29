@@ -96,6 +96,8 @@ Object* Object::create(const std::string& type)
         return new DDIMObject();
     else if (type == "contact")
         return new ContactObject();
+    else if (type == "latitude")
+        return new GLatitudeObject();
 #endif
     else
         return 0;
@@ -3207,6 +3209,165 @@ void ContactObject::exportXml(ticpp::Element* pConfig)
     if (birthday_m != "")
         pConfig->SetAttribute("birthday", birthday_m);
 }
+
+Logger& GLatitudeObject::logger_m(Logger::getInstance("LatitudeObject"));
+
+GLatitudeObject::GLatitudeObject()
+{}
+
+GLatitudeObject::~GLatitudeObject()
+{}
+
+void GLatitudeObject::importXml(ticpp::Element* pConfig)
+{
+    Object::importXml(pConfig);
+
+    std::string id = pConfig->GetAttribute("id");
+    if (id == "")
+        throw ticpp::Exception("Missing or empty id");
+    if (id_m == "")
+        id_m = id;
+
+    task_m = new PeriodicTask(this);
+    task_m->setAfter(10);
+    task_m->reschedule(0);
+}
+
+void GLatitudeObject::exportXml(ticpp::Element* pConfig)
+{
+    Object::exportXml(pConfig);
+
+    if (id_m != "")
+        pConfig->SetAttribute("id", id_m);
+
+    if (location_m != "")
+        pConfig->SetText(location_m);
+}
+
+#ifdef HAVE_LIBCURL
+#include <curl/curl.h>
+#endif
+
+/* the function to invoke as the data recieved */
+size_t static write_callback_func(void *buffer,
+                        size_t size,
+                        size_t nmemb,
+                        void *userp)
+{
+    char **response_ptr =  (char**)userp;
+
+    *response_ptr = strndup((const char *)buffer, (size_t)(size *nmemb));
+    return nmemb*size; 
+}
+
+void GLatitudeObject::onChange(Object* object)
+{
+    logger_m.errorStream() << "GLatitudeObject::onChange" << endlog;
+
+#ifdef HAVE_LIBCURL
+    CURL *curl;
+    CURLcode res;
+    char *response = NULL;
+    
+    curl = curl_easy_init();
+    if(curl)
+    {
+        std::stringstream msg;
+        msg << "http://www.google.com/latitude/apps/badge/api?user=" << id_m << "&type=kml";
+        std::string url = msg.str();
+        //curl_easy_setopt(curl, CURLOPT_VERBOSE, TRUE);
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        /* setting a callback function to return the data */
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_func);
+
+        /* passing the pointer to the response as the callback parameter */
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        res = curl_easy_perform(curl);
+
+        logger_m.infoStream() << "curl_easy_perform returned: " << res << endlog;
+        if (res != 0)
+	    logger_m.infoStream() << "msg=" << curl_easy_strerror(res) << endlog;
+        curl_easy_cleanup(curl);
+
+        if (res == 0)
+        {
+            try
+            {
+                ticpp::Document doc;
+                doc.LoadFromString(response); 
+
+                ticpp::Element* pKml = doc.FirstChildElement("kml");
+                if (pKml)
+                {
+                    ticpp::Element* pDocument = pKml->FirstChildElement("Document");
+                    if (pDocument)
+                    {
+                        ticpp::Element* pPlacemark = pDocument->FirstChildElement("Placemark");
+                        if (pPlacemark)
+                        {
+                            ticpp::Element* pPoint = pPlacemark->FirstChildElement("Point");
+                            if (pPoint)
+                            {
+                                ticpp::Element* pCoordinates = pPoint->FirstChildElement("coordinates");
+                                if (pCoordinates)
+                                {
+                                   ticpp::Iterator< ticpp::Node > child;
+                                   child = pCoordinates->FirstChild(false);
+                                   std::string val = child->Value();
+                                   if (child->Type() == TiXmlNode::TEXT && val.length())
+                                   {
+                                       int offset = val.find(',');
+                                       if (offset != std::string::npos)
+                                       {
+                                           std::string lat = val.substr(offset+1);
+                                           std::string lon = val.substr(0, offset);
+                                           location_m = "";
+                                           location_m.append(lat);
+                                           location_m.append(",");
+                                           location_m.append(lon);
+                                           logger_m.errorStream() << "location: " << location_m << endlog;
+                                       }
+                                   }
+                                }
+                                else
+                                {
+                                    logger_m.errorStream() << "coordinates node not found" << endlog;
+                                }
+                            }
+                            else
+                            {
+                                logger_m.errorStream() << "Point node not found" << endlog;
+                            }
+                        }
+                        else
+                        {
+                            logger_m.errorStream() << "Placemark node not found" << endlog;
+                        }
+                    }
+                    else
+                    {
+                        logger_m.errorStream() << "Document node not found" << endlog;
+                    }
+                }
+                else
+                {
+                    logger_m.errorStream() << "KML node not found" << endlog;
+                }
+            }
+            catch( ticpp::Exception& ex )
+            {
+                logger_m.errorStream() << "Parsing failed: " << ex.m_details << endlog;
+            }
+        }
+    }
+    else
+        logger_m.errorStream() << "Unable to execute latitude update. Curl not available" << endlog;
+# else
+    logger_m.errorStream() << "Latitude not supported, libcurn not available" << endlog;
+#endif
+}
+
 #endif
 
 ObjectController::ObjectController()
@@ -3234,6 +3395,12 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
     
     if (len < 12)
         return;
+
+    PersistentStorage *persistence = Services::instance()->getPersistentStorage();
+    if (persistence)
+    {
+        persistence->writelog("DGQG01", (const char *)buf);
+    }
 
     type.assign((const char *)buf, 3);
     address.assign((const char *)(buf + 3), 6);
