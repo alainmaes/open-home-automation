@@ -1088,6 +1088,28 @@ protected:
     std::string birthday_m;
 };
 
+/*----Latitude object----*/
+//#include "timermanager.h"
+class PeriodicTask;
+
+class GLatitudeObject : public StringObject, public ChangeListener
+{
+public:
+    GLatitudeObject();
+    virtual ~GLatitudeObject();
+
+    virtual std::string getType() { return "latitude"; };
+    virtual void importXml(ticpp::Element* pConfig);
+    virtual void exportXml(ticpp::Element* pConfig);
+    virtual void onChange(Object* object);
+ 
+protected:
+    static Logger& logger_m;
+    PeriodicTask*  task_m;
+    std::string id_m;
+    std::string location_m;
+};
+
 #endif
 
 #ifndef OPEN_HOME_AUTOMATION

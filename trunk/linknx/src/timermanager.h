@@ -116,6 +116,9 @@ public:
     void setAt(TimeSpec* at) { at_m = at; };
     void setUntil(TimeSpec* until) { until_m = until; };
     void setDuring(int during) { during_m = during; };
+#ifdef OPEN_HOME_AUTOMATION
+    void setAfter(int after) { after_m = after; };
+#endif
     virtual void onChange(Object* object);
 
 protected:
