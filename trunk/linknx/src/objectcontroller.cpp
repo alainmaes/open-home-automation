@@ -3228,6 +3228,12 @@ void GLatitudeObject::importXml(ticpp::Element* pConfig)
     if (id_m == "")
         id_m = id;
 
+    std::string lat_id = pConfig->GetAttribute("badge");
+    if (lat_id == "")
+        throw ticpp::Exception("Missing or empty badge id");
+    if (badge_m == "")
+        badge_m = lat_id;
+
     task_m = new PeriodicTask(this);
     task_m->setAfter(10);
     task_m->reschedule(0);
@@ -3239,6 +3245,9 @@ void GLatitudeObject::exportXml(ticpp::Element* pConfig)
 
     if (id_m != "")
         pConfig->SetAttribute("id", id_m);
+
+    if (badge_m != "")
+        pConfig->SetAttribute("badge", badge_m);
 
     if (location_m != "")
         pConfig->SetText(location_m);
@@ -3273,7 +3282,7 @@ void GLatitudeObject::onChange(Object* object)
     if(curl)
     {
         std::stringstream msg;
-        msg << "http://www.google.com/latitude/apps/badge/api?user=" << id_m << "&type=kml";
+        msg << "http://www.google.com/latitude/apps/badge/api?user=" << badge_m << "&type=kml";
         std::string url = msg.str();
         //curl_easy_setopt(curl, CURLOPT_VERBOSE, TRUE);
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
