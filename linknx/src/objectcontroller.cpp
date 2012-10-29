@@ -3235,7 +3235,7 @@ void GLatitudeObject::importXml(ticpp::Element* pConfig)
         badge_m = lat_id;
 
     task_m = new PeriodicTask(this);
-    task_m->setAfter(10);
+    task_m->setAfter(60);
     task_m->reschedule(0);
 }
 
@@ -3330,7 +3330,7 @@ void GLatitudeObject::onChange(Object* object)
                                            std::string lon = val.substr(0, offset);
                                            location_m = "";
                                            location_m.append(lat);
-                                           location_m.append(",");
+                                           location_m.append(";");
                                            location_m.append(lon);
                                            logger_m.errorStream() << "location: " << location_m << endlog;
                                            setValue(location_m);
