@@ -3268,7 +3268,7 @@ size_t static write_callback_func(void *buffer,
 
 void GLatitudeObject::onChange(Object* object)
 {
-    if (task_m->getValue == true)
+    if (task_m->getValue() == true)
     {
         /*
          * Timer will fire 2 events, one with value true to start an action,
