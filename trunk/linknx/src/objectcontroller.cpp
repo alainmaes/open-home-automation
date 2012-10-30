@@ -3268,7 +3268,17 @@ size_t static write_callback_func(void *buffer,
 
 void GLatitudeObject::onChange(Object* object)
 {
-    logger_m.errorStream() << "GLatitudeObject::onChange" << endlog;
+    if (task_m->getValue == true)
+    {
+        /*
+         * Timer will fire 2 events, one with value true to start an action,
+         * one with value false to stop the action. Only respond when the
+         * value is false here.
+         */
+        return;
+    }
+
+    logger_m.infoStream() << "GLatitudeObject: fetching location" << endlog;
 
 #ifdef HAVE_LIBCURL
     CURL *curl;
@@ -3281,8 +3291,11 @@ void GLatitudeObject::onChange(Object* object)
         std::stringstream msg;
         msg << "http://www.google.com/latitude/apps/badge/api?user=" << badge_m << "&type=kml";
         std::string url = msg.str();
+        
         //curl_easy_setopt(curl, CURLOPT_VERBOSE, TRUE);
+        
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        
         /* setting a callback function to return the data */
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_func);
 
@@ -3291,7 +3304,6 @@ void GLatitudeObject::onChange(Object* object)
 
         res = curl_easy_perform(curl);
 
-        logger_m.infoStream() << "curl_easy_perform returned: " << res << endlog;
         if (res != 0)
 	    logger_m.infoStream() << "msg=" << curl_easy_strerror(res) << endlog;
         curl_easy_cleanup(curl);
@@ -3332,7 +3344,7 @@ void GLatitudeObject::onChange(Object* object)
                                            location_m.append(lat);
                                            location_m.append(";");
                                            location_m.append(lon);
-                                           logger_m.errorStream() << "location: " << location_m << endlog;
+                                           logger_m.infoStream() << "location: " << location_m << endlog;
                                            setValue(location_m);
                                        }
                                    }

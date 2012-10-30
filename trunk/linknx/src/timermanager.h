@@ -118,6 +118,7 @@ public:
     void setDuring(int during) { during_m = during; };
 #ifdef OPEN_HOME_AUTOMATION
     void setAfter(int after) { after_m = after; };
+    bool getValue() { return value_m; };
 #endif
     virtual void onChange(Object* object);
 
