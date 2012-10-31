@@ -3340,12 +3340,18 @@ void GLatitudeObject::onChange(Object* object)
                                        {
                                            std::string lat = val.substr(offset+1);
                                            std::string lon = val.substr(0, offset);
-                                           location_m = "";
-                                           location_m.append(lat);
-                                           location_m.append(";");
-                                           location_m.append(lon);
-                                           logger_m.infoStream() << "location: " << location_m << endlog;
-                                           setValue(location_m);
+                                           std::string newLocation = "";
+                                           newLocation.append(lat);
+                                           newLocation.append(";");
+                                           newLocation.append(lon);
+
+                                           if (newLocation != location_m)
+                                           {
+                                               logger_m.infoStream() << "new location: " << location_m << endlog;
+                                               location_m = newLocation;
+                                               setValue(location_m);
+                                               onUpdate();
+                                           }
                                        }
                                    }
                                 }
