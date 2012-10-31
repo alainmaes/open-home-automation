@@ -43,6 +43,9 @@ public:
     virtual void onBusEvent(const uint8_t* buf, int len) = 0;
 };
 
+class Object;
+class PeriodicTask;
+
 class DomintellConnection : public Thread
 {
 public:
@@ -67,6 +70,9 @@ private:
     std::string url_m;
     bool autodiscovery_m;
     BusEventListener *listener_m;
+
+    int kaInterval_m;
+    time_t lastActivity_m;
 
     void Run (pth_sem_t * stop);
     static Logger& logger_m;

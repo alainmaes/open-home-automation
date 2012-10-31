@@ -505,6 +505,7 @@ bool Action::parseVarString(std::string &str, bool checkOnly)
             size_t idx2 = str.find('}', ++idx);
             if (idx2 == std::string::npos)
                 break;
+#ifndef OPEN_HOME_AUTOMATION
             Object* obj = ObjectController::instance()->getObject(str.substr(idx, idx2-idx));
             if (!checkOnly) {
                 std::string val = obj->getValue();
@@ -513,6 +514,30 @@ bool Action::parseVarString(std::string &str, bool checkOnly)
                 idx += val.length()-2;
             }
             obj->decRefCount();
+#else
+            if (str.substr(idx, idx2-idx) == "now")
+            {
+                if (!checkOnly)
+                {
+                    time_t t = time(0);
+                    struct tm * timeinfo = localtime(&t);
+                    std::string date = asctime (timeinfo);
+                    str.replace(idx-2, 3+idx2-idx, date);
+                    idx += date.length()-2;
+                }
+            }
+            else
+            {
+                Object* obj = ObjectController::instance()->getObject(str.substr(idx, idx2-idx));
+                if (!checkOnly) {
+                    std::string val = obj->getValue();
+                    logger_m.debugStream() << "Action: insert value '"<< val <<"' of object " << obj->getID() << endlog;
+                    str.replace(idx-2, 3+idx2-idx, val);
+                    idx += val.length()-2;
+                }
+                obj->decRefCount();
+            }
+#endif
             modified = true;
         }
         else if (c == '$')
