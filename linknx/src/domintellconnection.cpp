@@ -391,7 +391,7 @@ Deth02Logout(Deth02Connection * con, int write_only)
     return Deth02Complete (con);
 }
 
-DomintellConnection::DomintellConnection() : con_m(0), isRunning_m(false), stop_m(0), listener_m(0), autodiscovery_m(false)
+DomintellConnection::DomintellConnection() : con_m(0), isRunning_m(false), stop_m(0), listener_m(0), autodiscovery_m(false), lastActivity_m(0), kaInterval_m(0)
 {}
 
 DomintellConnection::~DomintellConnection()
@@ -406,6 +406,16 @@ void DomintellConnection::importXml(ticpp::Element* pConfig)
     autodiscovery_m =
         (pConfig->GetAttributeOrDefault("autodiscovery", 
                                         "false") == "true");
+
+    std::string interval = pConfig->GetAttribute("keepalive");
+    if (interval != "")
+    {
+        std::istringstream val(interval);
+        val >> kaInterval_m;
+    }
+
+    //kaInterval_m = pConfig->GetAttributeOrDefault("keepalive", 0);
+    
     if (isRunning_m)
     {
         Stop();
@@ -417,6 +427,7 @@ void DomintellConnection::exportXml(ticpp::Element* pConfig)
 {
     pConfig->SetAttribute("url", url_m);
     pConfig->SetAttribute("autodiscovery", autodiscovery_m ? "true" : "false");
+    pConfig->SetAttribute("keepalive", kaInterval_m);
 }
 
 void DomintellConnection::addBusEventListener(BusEventListener *listener)
@@ -447,7 +458,7 @@ void DomintellConnection::write(uint8_t* buf, int len)
     if (len == 0)
         return;
  
-    logger_m.infoStream() << "write(buf=" << buf << ", len=" << len << ")" << endlog;
+    logger_m.debugStream() << "write(buf=" << buf << ", len=" << len << ")" << endlog;
     if (con_m)
     {
         //TODO
@@ -458,6 +469,7 @@ void DomintellConnection::write(uint8_t* buf, int len)
             return;
         }
 	logger_m.debugStream() << "Write request sent" << endlog;
+        lastActivity_m = time(0);
     }
 }
 
@@ -679,5 +691,12 @@ int DomintellConnection::checkInput()
     else
         logger_m.errorStream() << "No listener!" << endlog;
 
+    //TODO: stop when "INFO:Session closed:INFO" received
+
+    if (kaInterval_m > 0 &&
+        ((time(0) - lastActivity_m) >= kaInterval_m))
+        write((uint8_t* )"HELLO", 5);
+
     return 1;
 }
+
