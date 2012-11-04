@@ -291,14 +291,20 @@ Deth02CheckFrame(Deth02Connection * con)
 
 /** receive packet from Deth02 */
 static int
-Deth02GetFrame(Deth02Connection * con)
+Deth02GetFrame(Deth02Connection * con, int timeout)
 {
+    time_t start = time(0);
+
     con->readlen = 0;
  
     while (con->readlen < 1)
     {
         if (Deth02CheckFrame (con) == -1)
             return -1;
+
+        if (timeout > 0 &&
+            ((time(0) - start) >= timeout))
+            return 0;
     }
 
     return con->readlen;
@@ -308,7 +314,7 @@ static int
 Deth02Login_complete (Deth02Connection * con)
 {
     int i;
-    i = Deth02GetFrame(con);
+    i = Deth02GetFrame(con, 0);
     if (i == -1)
         return -1;
 
@@ -352,7 +358,7 @@ static int
 Deth02Logout_complete (Deth02Connection * con)
 {
     int i;
-    i = Deth02GetFrame(con);
+    i = Deth02GetFrame(con, 0);
     if (i == -1)
         return -1;
 
@@ -459,6 +465,14 @@ void DomintellConnection::write(uint8_t* buf, int len)
         return;
  
     logger_m.debugStream() << "write(buf=" << buf << ", len=" << len << ")" << endlog;
+
+    PersistentStorage *persistence =
+        Services::instance()->getPersistentStorage();
+    if (persistence)
+    {
+        persistence->writelog("linknx", (const char *)buf);
+    }
+
     if (con_m)
     {
         //TODO
@@ -501,7 +515,7 @@ void DomintellConnection::Run (pth_sem_t * stop1)
 
                     while (!done)
                     {
-                        i = Deth02GetFrame(con_m);
+                        i = Deth02GetFrame(con_m, 0);
                         if (pth_event_status (stop_m) == PTH_STATUS_OCCURRED)
                             break;
                         
@@ -627,6 +641,9 @@ void DomintellConnection::Run (pth_sem_t * stop1)
                               pth_select_ev(0,0,0,0,&tv,stop);
                     */
                 }
+
+                logger_m.errorStream() << "Out of main loop..." << endlog;
+                
                 if (retval == -1)
                     retry = false;
             }
@@ -665,9 +682,12 @@ int DomintellConnection::checkInput()
     int len;
     
     if (!con_m)
+    {
+        logger_m.errorStream() << "No connection" << endlog;
         return 0;
+    }
     
-    len = Deth02GetFrame(con_m);
+    len = Deth02GetFrame(con_m, 1);
     if (pth_event_status (stop_m) == PTH_STATUS_OCCURRED)
         return -1;
     if (len == -1)
@@ -675,6 +695,15 @@ int DomintellConnection::checkInput()
         logger_m.errorStream() << "Read failed" << endlog;
         return 0;
     }
+    
+    // Handle keepalive 
+    if (kaInterval_m > 0 &&
+        ((time(0) - lastActivity_m) >= kaInterval_m))
+        write((uint8_t* )"HELLO", 5);
+
+    // If len is 0, a timeout occured
+    if (len == 0)
+        return 1;
     
     if (logger_m.isDebugEnabled())
     {
@@ -686,16 +715,37 @@ int DomintellConnection::checkInput()
 
     // Notify the objects, but strip off the <cr><lf>
     con_m->buf[con_m->readlen - 2] = 0;
-    if (listener_m)
-        listener_m->onBusEvent(con_m->buf, con_m->readlen - 2);
+    
+    PersistentStorage *persistence =
+        Services::instance()->getPersistentStorage();
+    if (persistence)
+    {
+        persistence->writelog("DGQG01", (const char *)con_m->buf);
+    }
+
+    if (con_m->readlen - 2 == 14 &&
+        con_m->buf[2] == ':' && con_m->buf[5] == ' ' &&
+        con_m->buf[8] == '/' && con_m->buf[11] == '/')
+    {
+        return 1;
+    }
+    else if (con_m->readlen - 2 == 16 &&
+             strncmp((const char *)con_m->buf, "INFO:World:INFO ", 16) == 0)
+    {
+        return 1;
+    }
+    else if (con_m->readlen - 2 == 24 &&
+             strncmp((const char *)con_m->buf, "INFO:Session closed:INFO", 24) == 0)
+    {
+        return -1;
+    }
     else
-        logger_m.errorStream() << "No listener!" << endlog;
-
-    //TODO: stop when "INFO:Session closed:INFO" received
-
-    if (kaInterval_m > 0 &&
-        ((time(0) - lastActivity_m) >= kaInterval_m))
-        write((uint8_t* )"HELLO", 5);
+    {
+        if (listener_m)
+            listener_m->onBusEvent(con_m->buf, con_m->readlen - 2);
+        else
+            logger_m.errorStream() << "No listener!" << endlog;
+    }
 
     return 1;
 }

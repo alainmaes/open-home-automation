@@ -3216,7 +3216,11 @@ GLatitudeObject::GLatitudeObject()
 {}
 
 GLatitudeObject::~GLatitudeObject()
-{}
+{
+    if (task_m)
+        delete(task_m);
+    task_m = NULL;
+}
 
 void GLatitudeObject::importXml(ticpp::Element* pConfig)
 {
@@ -3234,8 +3238,19 @@ void GLatitudeObject::importXml(ticpp::Element* pConfig)
     if (badge_m == "")
         badge_m = lat_id;
 
+    std::string interval = pConfig->GetAttribute("interval");
+    if (interval != "")
+    {
+        std::istringstream val(interval);
+        val >> interval_m;
+    }
+    else
+    {
+        interval_m = 300;
+    }
+
     task_m = new PeriodicTask(this);
-    task_m->setAfter(60);
+    task_m->setAfter(interval_m);
     task_m->reschedule(0);
 }
 
@@ -3248,6 +3263,8 @@ void GLatitudeObject::exportXml(ticpp::Element* pConfig)
 
     if (badge_m != "")
         pConfig->SetAttribute("badge", badge_m);
+
+    pConfig->SetAttribute("interval", interval_m);    
 }
 
 #ifdef HAVE_LIBCURL
@@ -3347,7 +3364,7 @@ void GLatitudeObject::onChange(Object* object)
 
                                            if (newLocation != location_m)
                                            {
-                                               logger_m.infoStream() << "new location: " << location_m << endlog;
+                                               logger_m.infoStream() << "new location: " << newLocation << endlog;
                                                location_m = newLocation;
                                                setValue(location_m);
                                                onUpdate();
@@ -3420,12 +3437,6 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
     
     if (len < 12)
         return;
-
-    PersistentStorage *persistence = Services::instance()->getPersistentStorage();
-    if (persistence)
-    {
-        persistence->writelog("DGQG01", (const char *)buf);
-    }
 
     type.assign((const char *)buf, 3);
     address.assign((const char *)(buf + 3), 6);
@@ -3512,7 +3523,7 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
     }
     else
     {
-        printf("Unknown BUS event %s\n", buf);
+        //printf("Unknown BUS event %s\n", buf);
     }
 }
 #endif
