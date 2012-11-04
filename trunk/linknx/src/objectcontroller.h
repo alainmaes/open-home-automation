@@ -1109,6 +1109,7 @@ protected:
     std::string id_m;
     std::string badge_m;
     std::string location_m;
+    int interval_m;
 };
 
 #endif
