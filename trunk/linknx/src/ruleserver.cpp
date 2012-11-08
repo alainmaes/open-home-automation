@@ -1557,6 +1557,10 @@ Condition* Condition::create(const std::string& type, ChangeListener* cl)
     else if (type == "script")
         return new LuaCondition(cl);
 #endif
+#ifdef OPEN_HOME_AUTOMATION
+     else if (type == "distance")
+        return new DistanceCondition(cl);
+#endif
     else
         return 0;
 }
@@ -1836,6 +1840,140 @@ void ObjectCondition::statusXml(ticpp::Element* pStatus)
     if (trigger_m)
         pStatus->SetAttribute("trigger", "true");
 }
+
+#ifdef OPEN_HOME_AUTOMATION
+
+DistanceCondition::DistanceCondition(ChangeListener* cl) : object_m(0), ref_location_m(0), distance_m(0), cl_m(cl), trigger_m(false), op_m(eq)
+{}
+
+DistanceCondition::~DistanceCondition()
+{
+    if (ref_location_m)
+        delete ref_location_m;
+    if (object_m && cl_m)
+        object_m->removeChangeListener(cl_m);
+    if (object_m)
+        object_m->decRefCount();
+}
+
+bool DistanceCondition::evaluate()
+{
+    // if no value is defined, condition is always true
+    bool val = (ref_location_m == 0);
+    if (!val)
+    {
+        int res = object_m->get()->compare(ref_location_m);
+        
+        val = ((op_m & eq) && (res == distance_m)) || ((op_m & lt) && (res < distance_m)) || ((op_m & gt) && (res > distance_m));
+    }
+    logger_m.infoStream() << "DistanceCondition (id='" << object_m->getID()
+    << "') evaluated as '" << val
+    << "'" << endlog;
+    return val;
+}
+
+void DistanceCondition::importXml(ticpp::Element* pConfig)
+{
+    std::string trigger;
+    trigger = pConfig->GetAttribute("trigger");
+    std::string id;
+    id = pConfig->GetAttribute("id");
+    if (object_m)
+        object_m->decRefCount();
+    object_m = ObjectController::instance()->getObject(id);
+
+    if (trigger == "true")
+    {
+        if (!cl_m)
+            throw ticpp::Exception("Trigger not supported in this context");
+        trigger_m = true;
+        object_m->addChangeListener(cl_m);
+    }
+
+    std::string location;
+    location = pConfig->GetAttribute("location");
+    if (location != "")
+    {
+        ref_location_m = object_m->createObjectValue(location);
+        logger_m.infoStream() << "DistanceCondition: configured ref_location_m='" << ref_location_m->toString() << "'" << endlog;
+    }
+    else
+    {
+        std::stringstream msg;
+        msg << "DistanceCondition: no reference location specified";
+        throw ticpp::Exception(msg.str());
+    }
+
+    std::string distance = pConfig->GetAttribute("distance");
+    if (distance != "")
+    {
+        std::istringstream val(distance);
+        val >> distance_m;
+    }
+    else
+    {
+        std::stringstream msg;
+        msg << "DistanceCondition: no distance specified";
+        throw ticpp::Exception(msg.str());
+    }
+
+    std::string op;
+    op = pConfig->GetAttribute("op");
+    if (op == "" || op == "eq")
+        op_m = eq;
+    else if (op == "lt")
+        op_m = lt;
+    else if (op == "gt")
+        op_m = gt;
+    else if (op == "ne")
+        op_m = lt | gt;
+    else if (op == "lte")
+        op_m = lt | eq;
+    else if (op == "gte")
+        op_m = gt | eq;
+    else
+    {
+        std::stringstream msg;
+        msg << "DistanceCondition: operation not supported: '" << op << "'";
+        throw ticpp::Exception(msg.str());
+    }
+}
+
+void DistanceCondition::exportXml(ticpp::Element* pConfig)
+{
+    pConfig->SetAttribute("type", "object");
+    pConfig->SetAttribute("id", object_m->getID());
+    if (op_m != eq)
+    {
+        std::string op;
+        if (op_m == lt)
+            op = "lt";
+        else if (op_m == gt)
+            op = "gt";
+        else if (op_m == (lt | eq))
+            op = "lte";
+        else if (op_m == (gt | eq))
+            op = "gte";
+        else
+            op = "ne";
+        pConfig->SetAttribute("op", op);
+    }
+    pConfig->SetAttribute("location", ref_location_m->toString());
+    pConfig->SetAttribute("distance", distance_m);
+
+    if (trigger_m)
+        pConfig->SetAttribute("trigger", "true");
+}
+
+void DistanceCondition::statusXml(ticpp::Element* pStatus)
+{
+    pStatus->SetAttribute("type", "object");
+    pStatus->SetAttribute("id", object_m->getID());
+    pStatus->SetAttribute("value", object_m->getValue());
+    if (trigger_m)
+        pStatus->SetAttribute("trigger", "true");
+}
+#endif
 
 ObjectComparisonCondition::ObjectComparisonCondition(ChangeListener* cl) : ObjectCondition(cl), object2_m(0)
 {}
