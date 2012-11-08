@@ -1092,13 +1092,42 @@ protected:
 //#include "timermanager.h"
 class PeriodicTask;
 
-class GLatitudeObject : public StringObject, public ChangeListener
+class GLatitudeObjectValue : public ObjectValue
+{
+public:
+    GLatitudeObjectValue(const std::string& value);
+    virtual ~GLatitudeObjectValue() {};
+    virtual bool equals(ObjectValue* value);
+    virtual int compare(ObjectValue* value);
+    virtual std::string toString();
+    virtual double toNumber();
+protected:
+    virtual bool set(ObjectValue* value);
+    virtual bool set(double value);
+    std::string value_m;
+    GLatitudeObjectValue() {};
+};
+
+class GLatitudeObject : public Object, public GLatitudeObjectValue, public ChangeListener
 {
 public:
     GLatitudeObject();
     virtual ~GLatitudeObject();
 
+    virtual ObjectValue* createObjectValue(const std::string& value);
+    virtual void setValue(const std::string& value);
     virtual std::string getType() { return "latitude"; };
+
+    void setStringValue(const std::string& val);
+
+    virtual void doWrite(const uint8_t* buf, int len, eibaddr_t src) {};
+    virtual void doSend(bool isWrite) {};
+    virtual std::string toString() { return GLatitudeObjectValue::toString(); };
+protected:
+    virtual bool set(ObjectValue* value) { return GLatitudeObjectValue::set(value); };
+    virtual bool set(double value) { return GLatitudeObjectValue::set(value); };
+    virtual ObjectValue* getObjectValue() { return static_cast<GLatitudeObjectValue*>(this); };
+
     virtual void importXml(ticpp::Element* pConfig);
     virtual void exportXml(ticpp::Element* pConfig);
     virtual void onChange(Object* object);

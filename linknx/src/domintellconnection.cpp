@@ -299,12 +299,11 @@ Deth02GetFrame(Deth02Connection * con, int timeout)
  
     while (con->readlen < 1)
     {
-        if (Deth02CheckFrame (con) == -1)
-            return -1;
+        if (timeout > 0 && ((time(0) - start) >= timeout))
+            return con->readlen;
 
-        if (timeout > 0 &&
-            ((time(0) - start) >= timeout))
-            return 0;
+        if (Deth02CheckFrame (con) == -1)
+            return -1; 
     }
 
     return con->readlen;
@@ -420,8 +419,6 @@ void DomintellConnection::importXml(ticpp::Element* pConfig)
         val >> kaInterval_m;
     }
 
-    //kaInterval_m = pConfig->GetAttributeOrDefault("keepalive", 0);
-    
     if (isRunning_m)
     {
         Stop();
@@ -680,14 +677,16 @@ void DomintellConnection::Run (pth_sem_t * stop1)
 int DomintellConnection::checkInput()
 {
     int len;
-    
+    PersistentStorage *persistence =
+        Services::instance()->getPersistentStorage();
+     
     if (!con_m)
     {
         logger_m.errorStream() << "No connection" << endlog;
         return 0;
     }
     
-    len = Deth02GetFrame(con_m, 1);
+    len = Deth02GetFrame(con_m, 30);
     if (pth_event_status (stop_m) == PTH_STATUS_OCCURRED)
         return -1;
     if (len == -1)
@@ -696,15 +695,12 @@ int DomintellConnection::checkInput()
         return 0;
     }
     
-    // Handle keepalive 
-    if (kaInterval_m > 0 &&
-        ((time(0) - lastActivity_m) >= kaInterval_m))
-        write((uint8_t* )"HELLO", 5);
-
     // If len is 0, a timeout occured
     if (len == 0)
-        return 1;
-    
+    {
+        goto handle_keepalive;
+    }
+
     if (logger_m.isDebugEnabled())
     {
         DbgStream dbg = logger_m.debugStream();
@@ -716,8 +712,6 @@ int DomintellConnection::checkInput()
     // Notify the objects, but strip off the <cr><lf>
     con_m->buf[con_m->readlen - 2] = 0;
     
-    PersistentStorage *persistence =
-        Services::instance()->getPersistentStorage();
     if (persistence)
     {
         persistence->writelog("DGQG01", (const char *)con_m->buf);
@@ -727,12 +721,12 @@ int DomintellConnection::checkInput()
         con_m->buf[2] == ':' && con_m->buf[5] == ' ' &&
         con_m->buf[8] == '/' && con_m->buf[11] == '/')
     {
-        return 1;
+        goto handle_keepalive;
     }
     else if (con_m->readlen - 2 == 16 &&
              strncmp((const char *)con_m->buf, "INFO:World:INFO ", 16) == 0)
     {
-        return 1;
+        goto handle_keepalive;
     }
     else if (con_m->readlen - 2 == 24 &&
              strncmp((const char *)con_m->buf, "INFO:Session closed:INFO", 24) == 0)
@@ -745,6 +739,16 @@ int DomintellConnection::checkInput()
             listener_m->onBusEvent(con_m->buf, con_m->readlen - 2);
         else
             logger_m.errorStream() << "No listener!" << endlog;
+    }
+
+handle_keepalive:
+    // Handle keepalive 
+    if (kaInterval_m > 0 &&
+        ((time(0) - lastActivity_m) >= kaInterval_m))
+    {
+        //write((uint8_t* )"IS8003711%S", 11); 
+        write((uint8_t* )"HELLO", 5);
+        //write((uint8_t* )"PING", 4);
     }
 
     return 1;

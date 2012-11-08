@@ -768,7 +768,7 @@ void DISMObject::updateValue(const std::string& value)
 
 void DISMObject::read()
 {
-    DomintellConnection* con = Services::instance()->getDomintellConnection();
+    /*DomintellConnection* con = Services::instance()->getDomintellConnection();
     if (!readPending_m)
     {
         //uint8_t buf[2] = { 0, 0 };
@@ -786,7 +786,7 @@ void DISMObject::read()
         ++cnt;
     }
     // If the device didn't answer after 1 second, we consider the object's
-    // default value as the current value to avoid waiting forever.
+    // default value as the current value to avoid waiting forever.*/
     init_m = true;
 }
 
@@ -3210,6 +3210,134 @@ void ContactObject::exportXml(ticpp::Element* pConfig)
         pConfig->SetAttribute("birthday", birthday_m);
 }
 
+GLatitudeObjectValue::GLatitudeObjectValue(const std::string& value)
+{
+    value_m = value;
+}
+
+std::string GLatitudeObjectValue::toString()
+{
+    return value_m;
+}
+
+double GLatitudeObjectValue::toNumber()
+{
+    std::istringstream val(value_m);
+    double value;
+    val >> value;
+
+    if ( val.fail() ||
+         val.peek() != std::char_traits<char>::eof()) // workaround for wrong val.eof() flag in uClibc++
+    {
+        value = 0;
+    }
+    return value;
+}
+
+#include <cmath>
+
+bool GLatitudeObjectValue::equals(ObjectValue* value)
+{
+    assert(value);
+    GLatitudeObjectValue* val = dynamic_cast<GLatitudeObjectValue*>(value);
+    if (val == 0)
+    {
+        logger_m.errorStream() << "GLatitudeObjectValue: ERROR, equals() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+        return false;
+    }
+    logger_m.infoStream() << "GLatitudeObjectValue: Compare value_m='" << value_m << "' to value='" << val->value_m << "'" << endlog;
+    return value_m == val->value_m;
+}
+
+int GLatitudeObjectValue::compare(ObjectValue* value)
+{
+    assert(value);
+    GLatitudeObjectValue* val =
+        dynamic_cast<GLatitudeObjectValue*>(value);
+
+    if (val == 0)
+    {
+        logger_m.errorStream() << "GLatitudeObjectValue: ERROR, compare() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+        return -1;
+    }
+
+    logger_m.infoStream() << "GLatitudeObjectValue: Compare value_m='" << value_m << "' to value='" << val->value_m << "'" << endlog;
+
+    int offset = value_m.find(";");
+    
+    std::string str1 = value_m.substr(0, offset);
+    std::istringstream val1(str1);
+    double lat1;
+    val1 >> lat1;
+
+    std::string str2 = value_m.substr(offset + 1);
+    std::istringstream val2(str2);
+    double long1;
+    val2 >> long1;
+
+    offset = val->value_m.find(";");
+
+    std::string str3 = val->value_m.substr(0, offset);
+    std::istringstream val3(str3);
+    double lat2;
+    val3 >> lat2;
+
+    std::string str4 = val->value_m.substr(offset + 1);
+    std::istringstream val4(str4);
+    double long2;
+    val4 >> long2;
+
+        double PI = 4.0*atan(1.0);
+        
+        //main code inside the class
+        double dlat1=lat1*(PI/180);
+
+        double dlong1=long1*(PI/180);
+        double dlat2=lat2*(PI/180);
+        double dlong2=long2*(PI/180);
+
+        double dLong=dlong1-dlong2;
+        double dLat=dlat1-dlat2;
+
+        double aHarv= pow(sin(dLat/2.0),2.0)+cos(dlat1)*cos(dlat2)*pow(sin(dLong/2),2);
+        double cHarv=2*atan2(sqrt(aHarv),sqrt(1.0-aHarv));
+        //earth's radius from wikipedia varies between 6,356.750 km — 6,378.135 km (˜3,949.901 — 3,963.189 miles)
+        //The IUGG value for the equatorial radius of the Earth is 6378.137 km (3963.19 mile)
+        const double earth=6378.137;//I am doing miles, just change this to radius in kilometers to get distances in km
+        double distance=earth*cHarv;
+ logger_m.infoStream() << "GLatitudeObjectValue: Compare result: "<< distance << endlog;
+    return distance*1000;
+}
+
+bool GLatitudeObjectValue::set(ObjectValue* value)
+{
+    assert(value);
+    GLatitudeObjectValue* val = dynamic_cast<GLatitudeObjectValue*>(value);
+    if (val == 0)
+        logger_m.errorStream() << "GLatitudeObject: ERROR, setValue() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+    else
+    {
+        if (value_m != val->value_m)
+        {
+            value_m = val->value_m;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool GLatitudeObjectValue::set(double value)
+{
+    std::ostringstream out;
+    out << value;
+    if (value_m != out.str())
+    {
+        value_m = out.str();
+        return true;
+    }
+    return false;
+}
+
 Logger& GLatitudeObject::logger_m(Logger::getInstance("LatitudeObject"));
 
 GLatitudeObject::GLatitudeObject()
@@ -3220,6 +3348,17 @@ GLatitudeObject::~GLatitudeObject()
     if (task_m)
         delete(task_m);
     task_m = NULL;
+}
+
+ObjectValue* GLatitudeObject::createObjectValue(const std::string& value)
+{
+    return new GLatitudeObjectValue(value);
+}
+
+void GLatitudeObject::setValue(const std::string& value)
+{
+    GLatitudeObjectValue val(value);
+    Object::setValue(&val);
 }
 
 void GLatitudeObject::importXml(ticpp::Element* pConfig)
@@ -3366,8 +3505,9 @@ void GLatitudeObject::onChange(Object* object)
                                            {
                                                logger_m.infoStream() << "new location: " << newLocation << endlog;
                                                location_m = newLocation;
+                                               //set(createObjectValue(location_m));
+                                               //onUpdate();
                                                setValue(location_m);
-                                               onUpdate();
                                            }
                                        }
                                    }
@@ -3523,7 +3663,7 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
     }
     else
     {
-        //printf("Unknown BUS event %s\n", buf);
+        printf("Unknown BUS event %s\n", buf);
     }
 }
 #endif

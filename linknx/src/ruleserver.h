@@ -120,6 +120,35 @@ private:
     ObjectValue* value_m;
 };
 
+#ifdef OPEN_HOME_AUTOMATION
+class DistanceCondition : public Condition
+{
+public:
+    DistanceCondition(ChangeListener* cl);
+    virtual ~DistanceCondition();
+
+    virtual bool evaluate();
+    virtual void importXml(ticpp::Element* pConfig);
+    virtual void exportXml(ticpp::Element* pConfig);
+    virtual void statusXml(ticpp::Element* pStatus);
+
+protected:
+    Object* object_m;
+    ChangeListener* cl_m;
+    bool trigger_m;
+    int op_m;
+    enum Operation
+    {
+        eq = 0x01,
+        gt = 0x02,
+        lt = 0x04
+    };
+private:
+    ObjectValue* ref_location_m;
+    int distance_m;
+};
+#endif
+
 class ObjectComparisonCondition : public ObjectCondition
 {
 public:
