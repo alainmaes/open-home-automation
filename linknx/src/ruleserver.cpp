@@ -1941,7 +1941,7 @@ void DistanceCondition::importXml(ticpp::Element* pConfig)
 
 void DistanceCondition::exportXml(ticpp::Element* pConfig)
 {
-    pConfig->SetAttribute("type", "object");
+    pConfig->SetAttribute("type", "distance");
     pConfig->SetAttribute("id", object_m->getID());
     if (op_m != eq)
     {
@@ -1967,7 +1967,7 @@ void DistanceCondition::exportXml(ticpp::Element* pConfig)
 
 void DistanceCondition::statusXml(ticpp::Element* pStatus)
 {
-    pStatus->SetAttribute("type", "object");
+    pStatus->SetAttribute("type", "distance");
     pStatus->SetAttribute("id", object_m->getID());
     pStatus->SetAttribute("value", object_m->getValue());
     if (trigger_m)
