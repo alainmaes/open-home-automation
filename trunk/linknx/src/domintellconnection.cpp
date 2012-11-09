@@ -639,26 +639,20 @@ void DomintellConnection::Run (pth_sem_t * stop1)
                     */
                 }
 
-                logger_m.errorStream() << "Out of main loop..." << endlog;
-                
                 if (retval == -1)
                     retry = false;
             }
             else
-                logger_m.errorStream() << "Failed to open group socket." << endlog;
+                logger_m.errorStream() << "Failed to open socket." << endlog;
 
-            if (con_m)
-            {
-                if (Deth02Logout(con_m, 0) == -1)
-		{
-		    logger_m.infoStream() << "DomintellConnection: Logout failed" << endlog;
-                }
-                Deth02Close(con_m);
-            }
+	    if (con_m)
+	        Deth02Close(con_m);
+
             con_m = 0;
         }
         else
             logger_m.errorStream() << "Failed to open DomintellConnection url." << endlog;
+
         if (retry)
         {
             struct timeval tv;
