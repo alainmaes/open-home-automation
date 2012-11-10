@@ -239,6 +239,11 @@ jQuery(document).ready(function(){
         $("#timer-condition-until-variabledate-date").append(option.clone());
       }
 
+      //OPEN_HOME_AUTOMATION      
+      if (this.getAttribute('type')=='latitude') {
+        $("#tab-rules-distance-condition-object").append(option.clone());
+      }
+
       var option=$('<option>' + this.getAttribute('id') + ' (' +  this.getAttribute('type') + ')' + '</option>').attr('value',this.getAttribute('id'));
       $("#tab-rules-objectcompare-condition-object").append(option);
       $("#tab-rules-objectcompare-condition-object2").append(option.clone());

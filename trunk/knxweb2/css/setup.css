@@ -374,6 +374,13 @@ table.form td {
     height:120px;
 }
 
+/* OPEN_HOME_AUTOMATION */
+.distance {
+    width:       150px;
+    height:      85px;
+    padding-top: 10px;
+}
+
 .action, #action, #actionlist_ontrue, #actionlist_onfalse {  
     border:1px dotted gray;
     width: 70px;
