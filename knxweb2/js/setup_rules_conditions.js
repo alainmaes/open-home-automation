@@ -12,6 +12,7 @@ $.extend(rules, {
     'time-counter':'Time Counter',
     'ioport-rx':'Ioport Rx',
     'script':'Script' // si linknx gère lua
+    'distance':'distance calculation' //OPEN_HOME_AUTOMATION
   */
   
   addConditionRule: function(type, condition, numcondition) {
@@ -237,6 +238,15 @@ $.extend(rules, {
         });
         if (collonne_condition>1) collonne_condition--;
         break;
+      case "distance": //OPEN_HOME_AUTOMATION
+        div[0].object_id=condition.getAttribute('id');
+        div[0].object_operation=condition.getAttribute('op');
+        if(!div[0].object_operation) div[0].object_operation='eq';
+        div[0].object_distance=condition.getAttribute('distance');
+        div[0].object_location=condition.getAttribute('location');
+        div[0].object_trigger=condition.getAttribute('trigger');
+        break;
+      
     };
 
      
@@ -379,6 +389,13 @@ $.extend(rules, {
         break;
       case "script":
         div[0].script='';
+        break;
+      case "distance": //OPEN_HOME_AUTOMATION
+        div[0].object_id='';
+        div[0].object_operation='eq';
+        div[0].object_distance='0';
+        div[0].object_location='0;0';        
+        div[0].object_trigger=false;
         break;
     };
 
@@ -547,6 +564,15 @@ $.extend(rules, {
       case "script":
         $('#tab-rules-script-condition-script').text(div.script);
         break;
+      case "distance": //OPEN_HOME_AUTOMATION
+        $('#tab-rules-distance-condition-object').val(div.object_id);
+        $('#tab-rules-distance-condition-operation').val(div.object_operation);
+        $('#tab-rules-distance-condition-location').val(div.object_location);
+        $('#tab-rules-distance-condition-distance').val(div.object_distance);
+        $("#tab-rules-distance-condition-object").trigger('change');
+        if (div.object_trigger) $('#tab-rules-distance-condition-trigger').attr('checked','1').trigger('change'); 
+        else $('#tab-rules-distance-condition-trigger').removeAttr('checked').trigger('change');
+        break;
     };
 
     if (openDialog)
@@ -694,6 +720,38 @@ $.extend(rules, {
         div.script=$('#tab-rules-script-condition-script').val();
         html = '';
         break;
+      case "distance": //OPEN_HOME_AUTOMATION
+        div.object_id=$('#tab-rules-distance-condition-object').val();
+        div.object_operation=$('#tab-rules-distance-condition-operation').val();
+        //if ($('#tab-rules-distance-condition-values').css('display')!='none') {
+        //  div.object_distance=$('#tab-rules-distance-condition-distance').val();
+        //}
+        //else {
+          div.object_location=$('#tab-rules-distance-condition-location').val();
+          div.object_distance=$('#tab-rules-distance-condition-distance').val();
+        //}
+        //if ($('#tab-rules-distance-condition-trigger').is(':checked')) div.object_trigger=true; else div.object_trigger=false;
+        div.object_trigger=$('#tab-rules-distance-condition-trigger').is(':checked');
+
+        if (div.object_operation == "eq")
+            operationString = "==";
+        else if (div.object_operation == "lt")
+            operationString = "<";
+        else if (div.object_operation == "gt")
+            operationString = ">";
+        else if (div.object_operation == "ne")
+            operationString = "!";
+        else if (div.object_operation == "lte")
+            operationString = "<=";
+        else if (div.object_operation == "gte")
+            operationString = ">=";
+        else
+            operationString = "???";
+
+        html = '<br />' + div.object_id + '<br />from<br />' + 
+               div.object_location + '<br />' + operationString +
+               '<br />' + div.object_distance + ' meters';
+        break;
     };
 
     $(div).html('<strong>'+conditionsList[type]+'</strong>'+html);
@@ -816,6 +874,13 @@ $.extend(rules, {
         break;
       case 'script':
         xml.text(condition[0].script);
+        break;
+      case 'distance': //OPEN_HOME_AUTOMATION
+        xml.attr('id',condition[0].object_id);
+        xml.attr('op',condition[0].object_operation);
+        xml.attr('location',condition[0].object_location);
+        xml.attr('distance',condition[0].object_distance);
+        if (condition[0].object_trigger) xml.attr('trigger','true');
         break;
     }
 
@@ -1032,15 +1097,31 @@ $.extend(rules, {
             break;
           case "script":
             break;
+          case "distance": //OPEN_HOME_AUTOMATION
+            $("#tab-rules-distance-condition-object").bind('change', function() {
+              /*if (_objectTypesValues[$("#tab-rules-distance-condition-object option:selected")[0].type])
+              {
+                values=_objectTypesValues[$("#tab-rules-distance-condition-object option:selected")[0].type];
+                $("#tab-rules-distance-condition-values").empty();
+                $(values).each(function() { $("#tab-rules-distance-condition-values").append('<option value="' + this + '">' + this + '</option>'); });
+                $("#tab-rules-distance-condition-values").show();
+                $("#tab-rules-distance-condition-value").hide();
+              } else
+              {
+                $("#tab-rules-distance-condition-values").hide();
+                $("#tab-rules-distance-condition-value").show();
+              }*/
+            });
+            break;
         };
       //}
     }    
     $('#'+id).dialog({
       autoOpen: false,
       buttons: { 
-          "Annuler": function() { rules.handleDialogCancel(this); },
-          "Supprimer": function() { rules.handleDialogDelete(this); },
-          "Sauver": function() { if (rules.handleDialogSave(this)) $(this).dialog("close"); }
+          "Cancel": function() { rules.handleDialogCancel(this); },
+          "Delete": function() { rules.handleDialogDelete(this); },
+          "Save": function() { if (rules.handleDialogSave(this)) $(this).dialog("close"); }
       },
       resizable: false,
       title: title,

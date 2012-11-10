@@ -13,6 +13,54 @@
 </form>
 </div>
 
+<!-- OPEN_HOME_AUTOMATION -->
+<div id="tab-rules-distance-condition-dialog" style="display: none;">
+<form id="tab-rules-distance-condition-form">
+<table class="form">
+  <tbody>
+    <tr>
+      <th>{l lang='en'}Distance{/l}</th>
+      <td>
+        <select id="tab-rules-distance-condition-object"></select>
+      </td>
+    </tr>
+    <tr>
+      <th>{l lang='en'}Condition{/l}</th>
+      <td>
+        <select id="tab-rules-distance-condition-operation">
+          <option value="eq">==</option>
+          <option value="lt">&lt;</option>
+          <option value="gt">&gt;</option>
+          <option value="ne">!=</option>
+          <option value="lte">&lt;=</option>
+          <option value="gte">&gt;=</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <th>{l lang='en'}Location{/l}</th>
+      <td>
+        <input type="text" id="tab-rules-distance-condition-location">
+      </td>
+    </tr>
+    <tr>
+      <th>{l lang='en'}Distance{/l}</th>
+      <td>
+        <input type="text" id="tab-rules-distance-condition-distance">
+      </td>
+    </tr>
+    <tr>
+      <th>{l lang='en'}Trigger{/l}</th>
+      <td>
+        <input type="checkbox" id="tab-rules-distance-condition-trigger">
+      </td>
+    </tr>
+  </tbody>
+</table>
+</form>
+</div>
+<!-- OPEN_HOME_AUTOMATION -->
+
 <div id="tab-rules-object-condition-dialog" style="display: none;">
 <form id="tab-rules-object-condition-form">
 <table class="form">

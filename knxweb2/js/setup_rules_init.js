@@ -35,7 +35,8 @@ var conditionsList = {
     'timer':'Timer',
     'time-counter':'Time Counter',
     'ioport-rx':'Ioport Rx',
-    'script':'Script'
+    'script':'Script',
+    'distance':'Distance' //OPEN_HOME_AUTOMATION
 };
 
 var actionsList = {
@@ -67,7 +68,7 @@ var rules = {
     div.addClass('condition');
     div.addClass('and');
     div.attr("id", "and"+((new Date().getTime())));
-    div.html('Et');
+    div.html('And'); //OPEN_HOME_AUTOMATION
     div[0].type="and";
     div[0].condition=true;
     $('#tab-rules-container').append(div);
@@ -108,7 +109,7 @@ var rules = {
     div.addClass('condition');
     div.addClass('or');
     div.attr("id", "or"+((new Date().getTime())));
-    div.html('Ou');;
+    div.html('Or'); //OPEN_HOME_AUTOMATION
     div[0].type="or";
     div[0].condition=true;
     $('#tab-rules-container').append(div);
