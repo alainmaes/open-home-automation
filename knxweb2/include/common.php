@@ -55,7 +55,16 @@
 	    '16.001' => '16.001: string (EIS15) with range 0 to 255 ',
 	    '20.102' => '20.102: heating mode',
 	    '28.001' => '28.001: variable length string objects',
-	    '29.xxx' => '29.xxx: signed 64bit value'
+	    '29.xxx' => '29.xxx: signed 64bit value',
+//OPEN_HOME_AUTOMATION
+            'DBIR01'   => 'DBIR01: Domintell relais output',
+            'DMOV01'   => 'DMOV01: Domintell motion sensor',
+            'DISM04'   => 'DISM04: Domintell input module',
+            'DISM08'   => 'DISM08: Domintell input module',
+            'DDIM01'   => 'DDIM01: Domintell dimmer',
+            'contact'  => 'contact',
+            'latitude' => 'google latitude badge object',
+//OPEN_HOME_AUTOMATION
 	);
 	
 	// Convert to a Javascript array
