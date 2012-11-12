@@ -85,7 +85,9 @@ Object* Object::create(const std::string& type)
         return new StringObject();
 #ifdef OPEN_HOME_AUTOMATION
     else if (type == "DBIR01")
-        return new DBIRObject();
+        return new DBIRObject(8);
+    else if (type == "DMR01")
+        return new DBIRObject(5);
     else if (type == "DMOV01")
         return new DISMObject(1);
     else if (type == "DISM04")
@@ -94,6 +96,14 @@ Object* Object::create(const std::string& type)
         return new DISMObject(8);
     else if (type == "DDIM01")
         return new DDIMObject();
+    else if (type == "DPBU01")
+        return new DPBUObject(1);
+    else if (type == "DPBU02")
+        return new DPBUObject(2);
+    else if (type == "DPBU04")
+        return new DPBUObject(4);
+    else if (type == "DPBU06")
+        return new DPBUObject(6);
     else if (type == "contact")
         return new ContactObject();
     else if (type == "latitude")
@@ -605,11 +615,31 @@ bool StepDirObjectValue::equals(ObjectValue* value)
 
 Logger& DBIRObject::logger_m(Logger::getInstance("DBIRObject"));
 
-DBIRObject::DBIRObject() : SwitchingObjectValue(false)
-{}
+DBIRObject::DBIRObject(int outputs)
+{
+    outputs_m = outputs;
+}
 
 DBIRObject::~DBIRObject()
 {}
+
+std::string DBIRObject::getType()
+{
+    if (outputs_m == 8)
+    {
+        return "DBIR01";
+    }
+    else if (outputs_m == 5)
+    {
+        return "DMR01";
+    }
+    else
+    {
+        logger_m.debugStream() << "DBIRObject: unsupported number of outputs "
+                               << outputs_m << endlog;
+        return "ERROR";
+    }
+}
 
 ObjectValue* DBIRObject::createObjectValue(const std::string& value)
 {
@@ -632,7 +662,7 @@ void DBIRObject::updateValue(const std::string& value)
 
 void DBIRObject::read()
 {
-    logger_m.errorStream() << "DBIRObject: read"
+/*    logger_m.errorStream() << "DBIRObject: read"
                            << endlog;
     
     DomintellConnection* con = Services::instance()->getDomintellConnection();
@@ -653,7 +683,7 @@ void DBIRObject::read()
         //readPending_m = true;
     }
 
-    /*int cnt = 0;
+    *int cnt = 0;
     while (cnt < 100 && readPending_m)
     {
         if (con->isRunning())
@@ -677,7 +707,21 @@ void DBIRObject::doSend(bool isWrite)
 {
     std::string command;
 
-    command.append(std::string("BIR"));
+    if (outputs_m == 8)
+    {
+        command.append(std::string("BIR"));
+    }
+    else if (outputs_m == 5)
+    {
+        command.append(std::string("DMR"));
+    }
+    else
+    {
+        logger_m.debugStream() << "DBIRObject: unsupported number of outputs "
+                               << outputs_m << endlog;
+        return;
+    }
+
     command.append(getAddress());
     
     if (getValue() == "on")
@@ -827,6 +871,134 @@ void DISMObject::onResponse(const uint8_t* buf, int len, eibaddr_t src)
 }
 
 /*----DISM object------------------------------------------------------------*/
+
+/*----DPBU object------------------------------------------------------------*/
+
+Logger& DPBUObject::logger_m(Logger::getInstance("DPBUObject"));
+
+DPBUObject::DPBUObject(int buttons)
+{
+    buttons_m = buttons;
+}
+
+DPBUObject::~DPBUObject()
+{}
+
+std::string DPBUObject::getType()
+{
+    if (buttons_m == 1)
+    {
+        return "DPBU01";
+    }
+    else if (buttons_m == 2)
+    {
+        return "DPBU02";
+    }
+    else if (buttons_m == 4)
+    {
+        return "DPBU04";
+    }
+    else if (buttons_m == 6)
+    {
+        return "DPBU06";
+    }
+    else
+    {
+        logger_m.debugStream() << "DPBUObject: unsupported number of buttons "
+                               << buttons_m << endlog;
+        return "ERROR";
+    }
+}
+
+ObjectValue* DPBUObject::createObjectValue(const std::string& value)
+{
+    return new SwitchingObjectValue(value);
+}
+
+void DPBUObject::setValue(const std::string& value)
+{
+    SwitchingObjectValue val(value);
+    Object::setValue(&val);
+}
+
+/* called on update from bus */
+void DPBUObject::updateValue(const std::string& value)
+{
+    SwitchingObjectValue val(value);
+    if (set(&val))
+    	onUpdate();
+}
+
+void DPBUObject::read()
+{
+    logger_m.errorStream() << "DPBUObject: read"
+                           << endlog;
+    
+    // If the device didn't answer after 1 second, we consider the object's
+    // default value as the current value to avoid waiting forever.
+    init_m = true;
+}
+
+void DPBUObject::doWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DPBUObject: doWrite"
+                           << endlog;
+}
+
+void DPBUObject::doSend(bool isWrite)
+{
+    std::string command;
+
+    int output =
+        strtol(getAddress().substr(getAddress().length() - 1).c_str(), (char **)NULL, 16);
+    if (output < (buttons_m + 1) || output > (buttons_m * 2))
+    {
+        logger_m.errorStream() << "DPBUObject: doSend failed for "
+                               << getAddress() << endlog;
+        return;
+    }
+    output -= buttons_m;
+
+    command.append(std::string("BU6"));
+    command.append(getAddress().substr(0, getAddress().length() - 1));
+    
+    std::stringstream out;
+    out << output;
+    command.append(out.str());
+    
+    if (getValue() == "on")
+        command.append(std::string("%I"));
+    else
+        command.append(std::string("%O"));
+
+    Services::instance()->getDomintellConnection()->write((uint8_t*)command.c_str(), command.length());
+}
+
+void DPBUObject::setBoolValue(bool value)
+{
+    SwitchingObjectValue val(value);
+    Object::setValue(&val);
+}
+
+void DPBUObject::onWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DPBUObject: Unexpected call of onWrite"
+                           << endlog;
+}
+
+void DPBUObject::onRead(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DPBUObject: Unexpected call of onRead"
+                           << endlog;
+}
+
+void DPBUObject::onResponse(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DPBUObject: Unexpected call of onResponse"
+                           << endlog;
+}
+
+/*----DPBU object------------------------------------------------------------*/
 #endif
 
 int StepDirObjectValue::compare(ObjectValue* value)
@@ -3582,7 +3754,7 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
     address.assign((const char *)(buf + 3), 6);
     replace(address.begin(), address.end(), ' ', '0');
 
-    if (len == 12 && type == "BIR")
+    if (len == 12 && (type == "BIR" || type == "DMR"))
     {
         DBIRObject *dbir = NULL;
         ObjectIdMap_t::iterator it;
@@ -3594,7 +3766,7 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
                 if (birAddr.substr(0, birAddr.length() - 2) == address)
                 {
                     int output = atoi(birAddr.substr(birAddr.length() - 1).c_str());
-                    if (output < 1 || output > 8)
+                    if (output < 1 || output > dbir->getOutputs())
                         return;
 
                     int value =
@@ -3603,6 +3775,40 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
 
                     int chanValue = (value >> (output-1)) & 0x1;
                     dbir->updateValue(chanValue == 0 ? "off" : "on");
+                }
+            }
+        }
+    }
+    else if (len == 12 && (type == "BU1" || type == "BU2" ||
+                           type == "BU4" || type == "BU6"))
+    {
+        DPBUObject *dpbu = NULL;
+        ObjectIdMap_t::iterator it;
+        for (it = objectIdMap_m.begin(); it != objectIdMap_m.end(); it++)
+        {
+            if ((dpbu = dynamic_cast<DPBUObject *>((*it).second)) != NULL)
+            {
+                std::string pbuAddr = dpbu->getAddress();
+                if (pbuAddr.substr(0, pbuAddr.length() - 2) == address)
+                {
+                    int output = atoi(pbuAddr.substr(pbuAddr.length() - 1).c_str());
+                    if (output < 1 || output > (dpbu->getButtons() * 2))
+                        continue;
+
+                    if (buf[9] == 'I' && output > dpbu->getButtons())
+                        continue;
+                    else if (buf[9] == 'O' && output < (dpbu->getButtons() + 1))
+                        continue;
+
+                    if (buf[9] == 'O')
+                        output -= dpbu->getButtons();
+                    
+                    int value =
+                        strtol(std::string((const char *)(buf + 10), 2).c_str(),
+                                           (char **)NULL, 16);
+
+                    int chanValue = (value >> (output-1)) & 0x1;
+                    dpbu->updateValue(chanValue == 0 ? "off" : "on");
                 }
             }
         }
@@ -3619,7 +3825,7 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
                 if (dismAddr.substr(0, dismAddr.length() - 2) == address)
                 {
                     int output = atoi(dismAddr.substr(dismAddr.length() - 1).c_str());
-                    if (output < 1 || output > 8) //dism->inputs_m
+                    if (output < 1 || output > dism->getInputs())
                         return;
 
                     int value =

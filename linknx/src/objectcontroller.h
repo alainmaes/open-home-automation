@@ -196,17 +196,18 @@ protected:
 
 #ifdef OPEN_HOME_AUTOMATION
 /*----DBIR object------------------------------------------------------------*/
-class DBIRObject : public Object, public SwitchingObjectValue
+class DBIRObject : public SwitchingObject
 {
 public:
-    DBIRObject();
+    DBIRObject(int outputs);
     virtual ~DBIRObject();
 
     virtual ObjectValue* createObjectValue(const std::string& value);
     //virtual void setValue(ObjectValue* value);
     virtual void setValue(const std::string& value);
     void updateValue(const std::string& value); /* called on update from bus */
-    virtual std::string getType() { return "DBIR01"; };
+    virtual std::string getType();
+    int getOutputs() { return outputs_m; };
 
     //virtual bool forceUpdate();
     virtual void read();    
@@ -223,6 +224,9 @@ protected:
     virtual bool set(double value) { return SwitchingObjectValue::set(value); };
     virtual ObjectValue* getObjectValue() { return static_cast<SwitchingObjectValue*>(this); };
     static Logger& logger_m;
+
+private:
+    int outputs_m;
 };
 /*----DBIR object------------------------------------------------------------*/
 
@@ -237,6 +241,7 @@ public:
     virtual void setValue(const std::string& value);
     void updateValue(const std::string& value); /* called on update from bus */
     virtual std::string getType();
+    int getInputs() { return inputs_m; };
 
     virtual void read();    
     virtual void doWrite(const uint8_t* buf, int len, eibaddr_t src);
@@ -257,6 +262,40 @@ private:
     int inputs_m;
 };
 /*----DISM object------------------------------------------------------------*/
+
+/*----DPBU object------------------------------------------------------------*/
+class DPBUObject : public SwitchingObject
+{
+public:
+    DPBUObject(int buttons);
+    virtual ~DPBUObject();
+
+    virtual ObjectValue* createObjectValue(const std::string& value);
+    virtual void setValue(const std::string& value);
+    void updateValue(const std::string& value); /* called on update from bus */
+    virtual std::string getType();
+    int getButtons() { return buttons_m; };
+
+    virtual void read();    
+    virtual void doWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void doSend(bool isWrite);
+    void setBoolValue(bool value);
+    bool getBoolValue() { get(); return value_m; };
+    virtual void onWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onRead(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onResponse(const uint8_t* buf, int len, eibaddr_t src);
+
+protected:
+    virtual bool set(ObjectValue* value) { return SwitchingObjectValue::set(value); };
+    virtual bool set(double value) { return SwitchingObjectValue::set(value); };
+    virtual ObjectValue* getObjectValue() { return static_cast<SwitchingObjectValue*>(this); };
+    static Logger& logger_m;
+
+private:
+    int buttons_m;
+};
+/*----DPBU object------------------------------------------------------------*/
+
 #endif
 
 class StepDirObjectValue : public ObjectValue

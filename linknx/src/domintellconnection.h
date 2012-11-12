@@ -72,7 +72,8 @@ private:
     BusEventListener *listener_m;
 
     int kaInterval_m;
-    time_t lastActivity_m;
+    time_t lastRx_m;
+    time_t lastTx_m;
 
     void Run (pth_sem_t * stop);
     static Logger& logger_m;

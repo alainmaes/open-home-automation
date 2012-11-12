@@ -272,19 +272,18 @@ Deth02CheckFrame(Deth02Connection * con)
 {
     int i;
    
-    i =
-            pth_read_ev (con->fd, con->buf,
-                         con->buflen, con->ev);
-        if (i == -1 && errno == EINTR)
-            return 0;
-        if (i == -1)
-            return -1;
-        if (i == 0)
-        {
-            errno = ECONNRESET;
-            return -1;
-        }
-        con->readlen += i;
+    i = pth_read_ev(con->fd, con->buf, con->buflen,
+                    pth_event(PTH_EVENT_TIME, pth_timeout(30,0)));
+    if (i == -1 && errno == EINTR)
+        return 0;
+    if (i == -1)
+        return -1;
+    if (i == 0)
+    {
+        errno = ECONNRESET;
+        return -1;
+    }
+    con->readlen += i;
 
     return 0;
 }
@@ -313,7 +312,7 @@ static int
 Deth02Login_complete (Deth02Connection * con)
 {
     int i;
-    i = Deth02GetFrame(con, 0);
+    i = Deth02GetFrame(con, 60);
     if (i == -1)
         return -1;
 
@@ -357,7 +356,7 @@ static int
 Deth02Logout_complete (Deth02Connection * con)
 {
     int i;
-    i = Deth02GetFrame(con, 0);
+    i = Deth02GetFrame(con, 30);
     if (i == -1)
         return -1;
 
@@ -396,7 +395,7 @@ Deth02Logout(Deth02Connection * con, int write_only)
     return Deth02Complete (con);
 }
 
-DomintellConnection::DomintellConnection() : con_m(0), isRunning_m(false), stop_m(0), listener_m(0), autodiscovery_m(false), lastActivity_m(0), kaInterval_m(0)
+DomintellConnection::DomintellConnection() : con_m(0), isRunning_m(false), stop_m(0), listener_m(0), autodiscovery_m(false), lastRx_m(time(0)), lastTx_m(time(0)), kaInterval_m(0)
 {}
 
 DomintellConnection::~DomintellConnection()
@@ -480,7 +479,7 @@ void DomintellConnection::write(uint8_t* buf, int len)
             return;
         }
 	logger_m.debugStream() << "Write request sent" << endlog;
-        lastActivity_m = time(0);
+        lastTx_m = time(0);
     }
 }
 
@@ -547,6 +546,16 @@ void DomintellConnection::Run (pth_sem_t * stop1)
                                     type.assign("DMOV01");
                                 else if (tmp == "DIM")
                                     type.assign("DDIM01");
+                                else if (tmp == "BU1")
+                                    type.assign("DPBU01");
+                                else if (tmp == "BU2")
+                                    type.assign("DPBU02");
+                                else if (tmp == "BU4")
+                                    type.assign("DPBU04");
+                                else if (tmp == "BU6")
+                                    type.assign("DPBU06");
+                                else if (tmp == "DMR")
+                                    type.assign("DMR01");
                                 else
                                 {
                                     logger_m.errorStream() <<
@@ -580,7 +589,13 @@ void DomintellConnection::Run (pth_sem_t * stop1)
                                     //TODO: LOG + PERSIST 
                                     ObjectController::instance()->addObject(obj);
                                 }
-                                
+                                else
+                                {
+                                    logger_m.errorStream() <<
+                                        " discovery: Failed to create object for => " <<
+                                        std::string((char *)con_m->buf, con_m->readlen - 2) <<
+                                        endlog;
+                                }
                             }
                         }
                     }
@@ -641,6 +656,8 @@ void DomintellConnection::Run (pth_sem_t * stop1)
 
                 if (retval == -1)
                     retry = false;
+                else
+                    write((uint8_t* )"LOGOUT", 6);
             }
             else
                 logger_m.errorStream() << "Failed to open socket." << endlog;
@@ -695,13 +712,13 @@ int DomintellConnection::checkInput()
         goto handle_keepalive;
     }
 
-    if (logger_m.isDebugEnabled())
-    {
-        DbgStream dbg = logger_m.debugStream();
-        dbg << " packet received: "
-            << std::string((char *)con_m->buf, con_m->readlen - 2) << endlog;
+    //if (logger_m.isDebugEnabled())
+    //{
+        //DbgStream dbg = logger_m.debugStream();
+        //dbg << " packet received: "
+        //    << std::string((char *)con_m->buf, con_m->readlen - 2) << endlog;
         //hexdump(con_m->buf, con_m->readlen);
-    }
+    //}
 
     // Notify the objects, but strip off the <cr><lf>
     con_m->buf[con_m->readlen - 2] = 0;
@@ -738,11 +755,18 @@ int DomintellConnection::checkInput()
 handle_keepalive:
     // Handle keepalive 
     if (kaInterval_m > 0 &&
-        ((time(0) - lastActivity_m) >= kaInterval_m))
+        ((time(0) - lastTx_m) >= kaInterval_m))
     {
-        //write((uint8_t* )"IS8003711%S", 11); 
         write((uint8_t* )"HELLO", 5);
-        //write((uint8_t* )"PING", 4);
+    }
+
+    if (len > 0)
+        lastRx_m = time(0);
+
+    if ((time(0) - lastRx_m) > 90)
+    {
+        logger_m.errorStream() << "No time update received in 90 seconds -> restart connection" << endlog;
+        return 0;
     }
 
     return 1;

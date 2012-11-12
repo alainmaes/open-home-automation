@@ -751,6 +751,10 @@ void ToggleValueAction::importXml(ticpp::Element* pConfig)
     if (object_m)
         object_m->decRefCount();
     object_m = dynamic_cast<SwitchingObject*>(obj);
+#ifdef OPEN_HOME_AUTOMATION
+    if (!object_m)
+        object_m = dynamic_cast<DBIRObject*>(obj);
+#endif
     if (!object_m)
     {
         obj->decRefCount();

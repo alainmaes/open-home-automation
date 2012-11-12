@@ -57,11 +57,14 @@
 	    '28.001' => '28.001: variable length string objects',
 	    '29.xxx' => '29.xxx: signed 64bit value',
 //OPEN_HOME_AUTOMATION
-            'DBIR01'   => 'DBIR01: Domintell relais output',
+            'DBIR01'   => 'DBIR01: Domintell relay module',
             'DMOV01'   => 'DMOV01: Domintell motion sensor',
             'DISM04'   => 'DISM04: Domintell input module',
             'DISM08'   => 'DISM08: Domintell input module',
             'DDIM01'   => 'DDIM01: Domintell dimmer',
+            'DPBU6'    => 'DPBU6: Domintell push button',
+            'DMR01'    => 'DMR01: Domintell relay module',
+            'DAMPLI01' => 'DAMPLI01: Domintell sound module',
             'contact'  => 'contact',
             'latitude' => 'google latitude badge object',
 //OPEN_HOME_AUTOMATION
