@@ -239,10 +239,19 @@ jQuery(document).ready(function(){
         $("#timer-condition-until-variabledate-date").append(option.clone());
       }
 
-      //OPEN_HOME_AUTOMATION      
+      //OPEN_HOME_AUTOMATION
       if (this.getAttribute('type')=='latitude') {
         $("#tab-rules-distance-condition-object").append(option.clone());
       }
+
+      if (this.getAttribute('type')=='DBIR01' ||
+          this.getAttribute('type')=='DPBU01' ||
+          this.getAttribute('type')=='DPBU02' ||
+          this.getAttribute('type')=='DPBU04' ||
+          this.getAttribute('type')=='DPBU06') {
+        listobject_1_001.append(option.clone());
+      }
+      //OPEN_HOME_AUTOMATION
 
       var option=$('<option>' + this.getAttribute('id') + ' (' +  this.getAttribute('type') + ')' + '</option>').attr('value',this.getAttribute('id'));
       $("#tab-rules-objectcompare-condition-object").append(option);
