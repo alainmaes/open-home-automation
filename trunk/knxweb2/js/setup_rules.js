@@ -243,7 +243,7 @@ jQuery(document).ready(function(){
       }
 
       //OPEN_HOME_AUTOMATION
-      if (this.getAttribute('type')=='latitude') {
+      if (this.getAttribute('type')=='location') {
         $("#tab-rules-distance-condition-object").append(option.clone());
       }
 
