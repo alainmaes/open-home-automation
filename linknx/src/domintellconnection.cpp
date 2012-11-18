@@ -556,6 +556,8 @@ void DomintellConnection::Run (pth_sem_t * stop1)
                                     type.assign("DPBU06");
                                 else if (tmp == "DMR")
                                     type.assign("DMR01");
+                                else if (tmp == "AMP")
+                                    type.assign("DAMPLI01");
                                 else
                                 {
                                     logger_m.errorStream() <<

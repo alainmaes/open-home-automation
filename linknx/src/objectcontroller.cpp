@@ -24,6 +24,7 @@
 #include <cassert>
 #ifdef OPEN_HOME_AUTOMATION
 #include <algorithm>
+#include <iomanip>
 #endif
 
 ObjectController* ObjectController::instance_m;
@@ -104,10 +105,12 @@ Object* Object::create(const std::string& type)
         return new DPBUObject(4);
     else if (type == "DPBU06")
         return new DPBUObject(6);
+    else if (type == "DAMPLI01")
+        return new DAMPLIObject();
     else if (type == "contact")
         return new ContactObject();
-    else if (type == "latitude")
-        return new GLatitudeObject();
+    else if (type == "location")
+        return new LocationObject();
 #endif
     else
         return 0;
@@ -143,7 +146,7 @@ ObjectValue* Object::get()
 {
     if (!init_m)
         read();
-    logger_m.debugStream() << "Object (id=" << getID() << "): get" << endlog;
+    //logger_m.debugStream() << "Object (id=" << getID() << "): get" << endlog;
     return getObjectValue();
 }
 
@@ -999,6 +1002,244 @@ void DPBUObject::onResponse(const uint8_t* buf, int len, eibaddr_t src)
 }
 
 /*----DPBU object------------------------------------------------------------*/
+
+/*----DAMPLI object----------------------------------------------------------*/
+
+DAMPLIObjectValue::DAMPLIObjectValue(const std::string& value)
+{
+    if (value.length() != 15 || value.c_str()[2] != '-' || 
+        value.c_str()[7] != '-' || value.c_str()[10] != '-')
+    {
+        std::stringstream msg;
+        msg << "DAMPLIObjectValue: Bad value: '" << value << "'" << std::endl;
+        throw ticpp::Exception(msg.str());
+    }
+
+    volume_m = strtol(value.substr(0, 2).c_str(), (char **)NULL, 16);
+
+    std::string input = value.substr(3, 4);
+    if (input == "AUX1")
+        input_m = 1;
+    else if (input == "AUX2")
+        input_m = 2;
+    else if (input == "AUX3")
+        input_m = 3;
+    else if (input == "AUX4")
+        input_m = 4;
+    else if (input == "TUNE")
+        input_m = 5;
+    else
+    {
+        std::stringstream msg;
+        msg << "DAMPLIObjectValue: Bad value: '" << value << "'" << std::endl;
+        throw ticpp::Exception(msg.str());
+    }
+
+    freq_m = strtol(value.substr(8, 2).c_str(), (char **)NULL, 16);
+    freq_m = freq_m << 16;
+    freq_m += (strtol(value.substr(11, 4).c_str(), (char **)NULL, 16) % 0xFFFF);
+
+logger_m.errorStream() << "DAMPLIObjectValue: CONSTR freq= " << freq_m << endlog;
+ 
+}
+
+std::string DAMPLIObjectValue::toString()
+{
+    std::stringstream stream;
+    stream << std::setfill ('0')
+           << std::setw(2) 
+           << std::hex << volume_m
+           << "-";
+    if (input_m < 5)
+        stream << "AUX" << std::dec << input_m;
+    else
+        stream << "TUNE";
+    stream << "-" << std::hex;
+
+    stream << std::setfill ('0')
+           << std::setw(2) 
+           << (freq_m >> 16) % 0xFF
+           << "-"
+           << std::setfill ('0')
+           << std::setw(4) 
+           << (freq_m & 0xFFFF);
+
+    return stream.str();
+}
+
+double DAMPLIObjectValue::toNumber()
+{
+    return volume_m;
+}
+
+bool DAMPLIObjectValue::equals(ObjectValue* value)
+{
+    assert(value);
+    DAMPLIObjectValue* val = dynamic_cast<DAMPLIObjectValue*>(value);
+    if (val == 0)
+    {
+        logger_m.errorStream() << 
+            "DAMPLIObjectValue: ERROR, equals() received invalid class object "
+            "(typeid=" << typeid(*value).name() << ")" << endlog;
+        return false;
+    }
+
+    if (volume_m == val->volume_m &&
+        input_m == val->input_m && freq_m == val->freq_m)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+int DAMPLIObjectValue::compare(ObjectValue* value)
+{
+    assert(value);
+    DAMPLIObjectValue* val = dynamic_cast<DAMPLIObjectValue*>(value);
+    if (val == 0)
+    {
+        logger_m.errorStream()  <<
+            "DAMPLIObjectValue: ERROR, compare() received invalid class object "
+            "(typeid=" << typeid(*value).name() << ")" << endlog;
+        return false;
+    }
+
+    if (volume_m < val->volume_m)
+        return -1;
+    else if (volume_m > val->volume_m)
+        return 1;
+
+    if (input_m < val->input_m)
+        return -1;
+    else if (input_m > val->input_m)
+        return 1;
+
+    if (freq_m < val->freq_m)
+        return -1;
+    else if (freq_m > val->freq_m)
+        return 1;
+
+    return 0;
+}
+
+bool DAMPLIObjectValue::set(ObjectValue* value)
+{
+    DAMPLIObjectValue* val = dynamic_cast<DAMPLIObjectValue*>(value);
+    if (val == 0)
+    {
+        logger_m.errorStream()  <<
+            "DAMPLIObjectValue: ERROR, set() received invalid class object "
+            "(typeid=" << typeid(*value).name() << ")" << endlog;
+        return false;
+    }
+
+    if (compare(value) == 0)
+        return false;
+
+    volume_m = val->volume_m;
+    input_m = val->input_m;
+    freq_m = val->freq_m;
+
+    return true;
+}
+
+bool DAMPLIObjectValue::set(double value)
+{
+    if (volume_m != value)
+    {
+        volume_m = value;
+        return true;
+    }
+    return false;
+}
+
+void DAMPLIObjectValue::setVolume(int volume)
+{
+    volume_m = volume;
+}
+
+Logger& DAMPLIObject::logger_m(Logger::getInstance("DAMPLIObject"));
+
+DAMPLIObject::DAMPLIObject() : DAMPLIObjectValue("00-TUNE-00-0000")
+{
+    //
+}
+
+DAMPLIObject::~DAMPLIObject()
+{}
+
+ObjectValue* DAMPLIObject::createObjectValue(const std::string& value)
+{
+    return new DAMPLIObjectValue(value);
+}
+
+void DAMPLIObject::setValue(const std::string& value)
+{
+    DAMPLIObjectValue val(value);
+    Object::setValue(&val);
+}
+
+/* called on update from bus */
+void DAMPLIObject::updateValue(const std::string& value)
+{
+    DAMPLIObjectValue val(value);
+    if (set(&val))
+    	onUpdate();
+}
+
+void DAMPLIObject::read()
+{
+    logger_m.errorStream() << "DAMPLIObject: read" << endlog;
+    
+    // If the device didn't answer after 1 second, we consider the object's
+    // default value as the current value to avoid waiting forever.
+    init_m = true;
+}
+
+void DAMPLIObject::doWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DAMPLIObject: doWrite" << endlog;
+}
+
+void DAMPLIObject::doSend(bool isWrite)
+{
+    std::stringstream stream;
+    
+    stream << "AMP" << getAddress() 
+           << "%D" << std::dec << volume_m 
+           << "%A" << input_m;
+
+    if (input_m == 5)
+        stream << "%F" << std::setfill ('0')
+               << std::dec
+               << (freq_m >> 16) % 0xFF
+               << "."
+               << (freq_m & 0xFFFF);
+
+    Services::instance()->getDomintellConnection()->write((uint8_t*)stream.str().c_str(), stream.str().length());
+}
+
+void DAMPLIObject::onWrite(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DAMPLIObject: Unexpected call of onWrite"
+                           << endlog;
+}
+
+void DAMPLIObject::onRead(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DAMPLIObject: Unexpected call of onRead"
+                           << endlog;
+}
+
+void DAMPLIObject::onResponse(const uint8_t* buf, int len, eibaddr_t src)
+{
+    logger_m.errorStream() << "DAMPLIObject: Unexpected call of onResponse"
+                           << endlog;
+}
+
+/*----DAMPLI object------------------------------------------------------------*/
+
 #endif
 
 int StepDirObjectValue::compare(ObjectValue* value)
@@ -3382,17 +3623,17 @@ void ContactObject::exportXml(ticpp::Element* pConfig)
         pConfig->SetAttribute("birthday", birthday_m);
 }
 
-GLatitudeObjectValue::GLatitudeObjectValue(const std::string& value)
+LocationObjectValue::LocationObjectValue(const std::string& value)
 {
     value_m = value;
 }
 
-std::string GLatitudeObjectValue::toString()
+std::string LocationObjectValue::toString()
 {
     return value_m;
 }
 
-double GLatitudeObjectValue::toNumber()
+double LocationObjectValue::toNumber()
 {
     std::istringstream val(value_m);
     double value;
@@ -3408,32 +3649,32 @@ double GLatitudeObjectValue::toNumber()
 
 #include <cmath>
 
-bool GLatitudeObjectValue::equals(ObjectValue* value)
+bool LocationObjectValue::equals(ObjectValue* value)
 {
     assert(value);
-    GLatitudeObjectValue* val = dynamic_cast<GLatitudeObjectValue*>(value);
+    LocationObjectValue* val = dynamic_cast<LocationObjectValue*>(value);
     if (val == 0)
     {
-        logger_m.errorStream() << "GLatitudeObjectValue: ERROR, equals() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+        logger_m.errorStream() << "LocationObjectValue: ERROR, equals() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
         return false;
     }
-    logger_m.infoStream() << "GLatitudeObjectValue: Compare value_m='" << value_m << "' to value='" << val->value_m << "'" << endlog;
+    logger_m.infoStream() << "LocationObjectValue: Compare value_m='" << value_m << "' to value='" << val->value_m << "'" << endlog;
     return value_m == val->value_m;
 }
 
-int GLatitudeObjectValue::compare(ObjectValue* value)
+int LocationObjectValue::compare(ObjectValue* value)
 {
     assert(value);
-    GLatitudeObjectValue* val =
-        dynamic_cast<GLatitudeObjectValue*>(value);
+    LocationObjectValue* val =
+        dynamic_cast<LocationObjectValue*>(value);
 
     if (val == 0)
     {
-        logger_m.errorStream() << "GLatitudeObjectValue: ERROR, compare() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+        logger_m.errorStream() << "LocationObjectValue: ERROR, compare() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
         return -1;
     }
 
-    logger_m.infoStream() << "GLatitudeObjectValue: Compare value_m='" << value_m << "' to value='" << val->value_m << "'" << endlog;
+    logger_m.infoStream() << "LocationObjectValue: Compare value_m='" << value_m << "' to value='" << val->value_m << "'" << endlog;
 
     int offset = value_m.find(";");
     
@@ -3477,16 +3718,17 @@ int GLatitudeObjectValue::compare(ObjectValue* value)
         //The IUGG value for the equatorial radius of the Earth is 6378.137 km (3963.19 mile)
         const double earth=6378.137;//I am doing miles, just change this to radius in kilometers to get distances in km
         double distance=earth*cHarv;
- logger_m.infoStream() << "GLatitudeObjectValue: Compare result: "<< distance << endlog;
+ 
+    logger_m.infoStream() << "LocationObjectValue: Compare result: "<< distance << endlog;
     return distance*1000;
 }
 
-bool GLatitudeObjectValue::set(ObjectValue* value)
+bool LocationObjectValue::set(ObjectValue* value)
 {
     assert(value);
-    GLatitudeObjectValue* val = dynamic_cast<GLatitudeObjectValue*>(value);
+    LocationObjectValue* val = dynamic_cast<LocationObjectValue*>(value);
     if (val == 0)
-        logger_m.errorStream() << "GLatitudeObject: ERROR, setValue() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
+        logger_m.errorStream() << "LocationObject: ERROR, setValue() received invalid class object (typeid=" << typeid(*value).name() << ")" << endlog;
     else
     {
         if (value_m != val->value_m)
@@ -3498,7 +3740,7 @@ bool GLatitudeObjectValue::set(ObjectValue* value)
     return false;
 }
 
-bool GLatitudeObjectValue::set(double value)
+bool LocationObjectValue::set(double value)
 {
     std::ostringstream out;
     out << value;
@@ -3510,77 +3752,32 @@ bool GLatitudeObjectValue::set(double value)
     return false;
 }
 
-Logger& GLatitudeObject::logger_m(Logger::getInstance("LatitudeObject"));
+#ifdef HAVE_LIBCURL
+#include <curl/curl.h>
+#endif
 
-GLatitudeObject::GLatitudeObject()
+Logger& LocationObject::logger_m(Logger::getInstance("LocationObject"));
+
+LocationObject::LocationObject()
 {}
 
-GLatitudeObject::~GLatitudeObject()
+LocationObject::~LocationObject()
 {
     if (task_m)
         delete(task_m);
     task_m = NULL;
 }
 
-ObjectValue* GLatitudeObject::createObjectValue(const std::string& value)
+ObjectValue* LocationObject::createObjectValue(const std::string& value)
 {
-    return new GLatitudeObjectValue(value);
+    return new LocationObjectValue(value);
 }
 
-void GLatitudeObject::setValue(const std::string& value)
+void LocationObject::setValue(const std::string& value)
 {
-    GLatitudeObjectValue val(value);
+    LocationObjectValue val(value);
     Object::setValue(&val);
 }
-
-void GLatitudeObject::importXml(ticpp::Element* pConfig)
-{
-    Object::importXml(pConfig);
-
-    std::string id = pConfig->GetAttribute("id");
-    if (id == "")
-        throw ticpp::Exception("Missing or empty id");
-    if (id_m == "")
-        id_m = id;
-
-    std::string lat_id = pConfig->GetAttribute("badge");
-    if (lat_id == "")
-        throw ticpp::Exception("Missing or empty badge id");
-    if (badge_m == "")
-        badge_m = lat_id;
-
-    std::string interval = pConfig->GetAttribute("interval");
-    if (interval != "")
-    {
-        std::istringstream val(interval);
-        val >> interval_m;
-    }
-    else
-    {
-        interval_m = 300;
-    }
-
-    task_m = new PeriodicTask(this);
-    task_m->setAfter(interval_m);
-    task_m->reschedule(0);
-}
-
-void GLatitudeObject::exportXml(ticpp::Element* pConfig)
-{
-    Object::exportXml(pConfig);
-
-    if (id_m != "")
-        pConfig->SetAttribute("id", id_m);
-
-    if (badge_m != "")
-        pConfig->SetAttribute("badge", badge_m);
-
-    pConfig->SetAttribute("interval", interval_m);    
-}
-
-#ifdef HAVE_LIBCURL
-#include <curl/curl.h>
-#endif
 
 /* the function to invoke as the data recieved */
 size_t static write_callback_func(void *buffer,
@@ -3594,7 +3791,176 @@ size_t static write_callback_func(void *buffer,
     return nmemb*size; 
 }
 
-void GLatitudeObject::onChange(Object* object)
+
+void LocationObject::importXml(ticpp::Element* pConfig)
+{
+    Object::importXml(pConfig);
+
+    std::string id = pConfig->GetAttribute("id");
+    if (id == "")
+        throw ticpp::Exception("Missing or empty id");
+    if (id_m == "")
+        id_m = id;
+
+    std::string lat_id = pConfig->GetAttribute("badge");
+    if (lat_id != "" && badge_m == "")
+        badge_m = lat_id;
+
+    std::string location = pConfig->GetAttribute("location");
+    if (location != "" && location_m == "")
+        location_m = location;
+ 
+    std::string interval = pConfig->GetAttribute("interval");
+    if (interval != "")
+    {
+        interval_m = 0;
+        std::istringstream val(interval);
+        val >> interval_m;
+    }
+
+    if (badge_m == "" && location_m == "")
+      throw ticpp::Exception("Missing location or badge id");
+    
+    if (badge_m != "" && location_m != "")
+      throw ticpp::Exception("Cannot have both static location and badge id");
+
+    if (badge_m != "")
+    {
+        if (interval_m == 0)
+            interval_m = 300;
+
+        task_m = new PeriodicTask(this);
+        task_m->setAfter(interval_m);
+        task_m->reschedule(0);
+    }
+
+    if (location_m != "")
+    {
+#ifndef HAVE_LIBCURL
+        throw ticpp::Exception("LocationObject: LibCuRL not available");
+#else
+        //http://maps.google.com/maps/geo?q=copernicuslaan%2050,%20antwerpen&output=json
+        CURL *curl;
+        CURLcode res;
+        char *response = NULL;
+    
+        curl = curl_easy_init();
+        if(!curl)
+            throw ticpp::Exception("LocationObject: Failed to initialize LibCuRL");
+
+        char *curlEscapedLocation = curl_easy_escape(curl, location_m.c_str(), strlen(location_m.c_str()));
+        if (!curlEscapedLocation)
+        {
+            curl_easy_cleanup(curl);
+            throw ticpp::Exception("LocationObject: Failed to parse location");
+        }
+
+        std::stringstream msg;
+        msg << "http://maps.google.com/maps/geo?q=" << curlEscapedLocation << "&output=kml";
+        std::string url = msg.str();
+
+        //curl_easy_setopt(curl, CURLOPT_VERBOSE, TRUE);
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_func);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        res = curl_easy_perform(curl);
+        curl_free(curlEscapedLocation);
+        curl_easy_cleanup(curl);
+ 
+        if (res != 0)
+	    throw ticpp::Exception("LocationObject: LibCuRL returned an error");
+
+        try
+        {
+            ticpp::Document doc;
+            doc.LoadFromString(response); 
+
+            ticpp::Element* pKml = doc.FirstChildElement("kml");
+            if (pKml)
+            {
+                ticpp::Element* pDocument = pKml->FirstChildElement("Response");
+                if (pDocument)
+                {
+                    ticpp::Element* pPlacemark = pDocument->FirstChildElement("Placemark");
+                    if (pPlacemark)
+                    {
+                        ticpp::Element* pPoint = pPlacemark->FirstChildElement("Point");
+                        if (pPoint)
+                        {
+                            ticpp::Element* pCoordinates = pPoint->FirstChildElement("coordinates");
+                            if (pCoordinates)
+                            {
+                               ticpp::Iterator< ticpp::Node > child;
+                               child = pCoordinates->FirstChild(false);
+                               std::string val = child->Value();
+                               if (child->Type() == TiXmlNode::TEXT && val.length())
+                               {
+                                   int offset = val.find(',');
+                                   if (offset != std::string::npos)
+                                   {
+                                       std::string lat = val.substr(offset+1);
+                                       std::string lon = val.substr(0, offset);
+                                       std::string newLocation = "";
+                                       newLocation.append(lat);
+                                       newLocation.append(";");
+                                       newLocation.append(lon);
+                                       logger_m.infoStream() << "location for address: " << newLocation << endlog;
+                                       setValue(newLocation);
+                                   }
+                                }
+                            }
+                            else
+                            {
+                                logger_m.errorStream() << "coordinates node not found" << endlog;
+                            }
+                        }
+                        else
+                        {
+                            logger_m.errorStream() << "Point node not found" << endlog;
+                        }
+                    }
+                    else
+                    {
+                        logger_m.errorStream() << "Placemark node not found" << endlog;
+                    }
+                }
+                else
+                {
+                    logger_m.errorStream() << "Response node not found" << endlog;
+                }
+            }
+            else
+            {
+                logger_m.errorStream() << "KML node not found" << endlog;
+            }
+        }
+        catch( ticpp::Exception& ex )
+        {
+            logger_m.errorStream() << "Parsing failed: " << ex.m_details << endlog;
+        }
+#endif
+    }
+}
+
+void LocationObject::exportXml(ticpp::Element* pConfig)
+{
+    Object::exportXml(pConfig);
+
+    if (id_m != "")
+        pConfig->SetAttribute("id", id_m);
+
+    if (badge_m != "")
+    {
+        pConfig->SetAttribute("badge", badge_m);
+        pConfig->SetAttribute("interval", interval_m);    
+    }
+
+    if (location_m != "")
+        pConfig->SetAttribute("location", location_m);
+}
+
+void LocationObject::onChange(Object* object)
 {
     if (task_m->getValue() == true)
     {
@@ -3606,7 +3972,7 @@ void GLatitudeObject::onChange(Object* object)
         return;
     }
 
-    logger_m.infoStream() << "GLatitudeObject: fetching location" << endlog;
+    logger_m.infoStream() << "LocationObject: fetching location" << endlog;
 
 #ifdef HAVE_LIBCURL
     CURL *curl;
@@ -3673,13 +4039,13 @@ void GLatitudeObject::onChange(Object* object)
                                            newLocation.append(";");
                                            newLocation.append(lon);
 
-                                           if (newLocation != location_m)
+                                           if (newLocation != curr_location_m)
                                            {
                                                logger_m.infoStream() << "new location: " << newLocation << endlog;
-                                               location_m = newLocation;
+                                               curr_location_m = newLocation;
                                                //set(createObjectValue(location_m));
                                                //onUpdate();
-                                               setValue(location_m);
+                                               setValue(curr_location_m);
                                            }
                                        }
                                    }
@@ -3863,6 +4229,33 @@ void ObjectController::onBusEvent(const uint8_t* buf, int len)
                                (char **)NULL, 16);
 
                     dim->updateValue(value);
+                }
+            }
+        }
+    }
+    else if (len == 27 && type == "AMP")
+    {
+        DAMPLIObject *dampli = NULL;
+        ObjectIdMap_t::iterator it;
+        
+        std::string ampliAddress((const char *)(buf + 3), 8);
+        replace(ampliAddress.begin(), ampliAddress.end(), ' ', '0');
+        ampliAddress.at(6) = '-';
+
+        std::string valueStr((const char *)(buf + 12));
+
+        for (it = objectIdMap_m.begin(); it != objectIdMap_m.end(); it++)
+        {
+            if ((dampli = dynamic_cast<DAMPLIObject *>((*it).second)) != NULL)
+            {
+                std::string dampliAddr = dampli->getAddress();
+                if (dampliAddr == ampliAddress)
+                {
+                    int output = atoi(dampliAddr.substr(dampliAddr.length() - 1).c_str());
+                    if (output < 1 || output > 4)
+                        return;
+
+                    dampli->updateValue(valueStr);
                 }
             }
         }

@@ -58,8 +58,8 @@ $.extend(rules, {
       case "time-counter":
         div[0].endpoint = [];
         div[0].endpoint[1] = jsPlumb.addEndpoint(div, $.extend({ anchor:[0, 0.5, 0, 0] }, inputEndpoint));
-        div[0].timecounter_threshold=condition.getAttribute('id');
-        div[0].timecounter_resetdelay=condition.getAttribute('id');
+        div[0].timecounter_threshold=condition.getAttribute('threshold');
+        div[0].timecounter_resetdelay=condition.getAttribute('reset-delay');
         rules.positionCondition(type, condition, numcondition, div);
         var k = 1;
         collonne_condition++;
@@ -68,7 +68,7 @@ $.extend(rules, {
           var condition2 = rules.addConditionRule(this.getAttribute('type'), this, numcondition);
           jsPlumb.connect({source:condition2[0].endpointout, target:div[0].endpoint[k]});
           k++;
-          if (k > 1) messageBox("Maximum number of condition for reaching this time-counter ","Condition time-counter","alert");
+          if (k > 2) messageBox("Maximum number of condition for reaching this time-counter ","Condition time-counter","alert");
         });
         if (collonne_condition>1) collonne_condition--;
         break;
