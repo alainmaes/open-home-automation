@@ -296,6 +296,53 @@ private:
 };
 /*----DPBU object------------------------------------------------------------*/
 
+/*----DAMPLI object----------------------------------------------------------*/
+class DAMPLIObjectValue : public ObjectValue
+{
+public:
+    DAMPLIObjectValue(const std::string& value);
+    virtual ~DAMPLIObjectValue() {};
+    virtual bool equals(ObjectValue* value);
+    virtual int compare(ObjectValue* value);
+    virtual std::string toString();
+    virtual double toNumber();    
+protected:
+    virtual bool set(ObjectValue* value);
+    virtual bool set(double value);
+    void setVolume(int volume);
+    int volume_m;
+    int input_m;
+    int freq_m;
+};
+
+class DAMPLIObject : public Object, public DAMPLIObjectValue
+{
+public:
+    DAMPLIObject();
+    virtual ~DAMPLIObject();
+
+    virtual ObjectValue* createObjectValue(const std::string& value);
+    virtual void setValue(const std::string& value);
+    void updateValue(const std::string& value); /* called on update from bus */
+    virtual std::string getType() { return "DAMPLI01"; };
+
+    virtual void read();    
+    virtual void doWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void doSend(bool isWrite);
+    void setBoolValue(bool value);
+    bool getBoolValue() { get(); return volume_m; };
+    virtual void onWrite(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onRead(const uint8_t* buf, int len, eibaddr_t src);
+    virtual void onResponse(const uint8_t* buf, int len, eibaddr_t src);
+
+protected:
+    virtual bool set(ObjectValue* value) { return DAMPLIObjectValue::set(value); };
+    virtual bool set(double value) { return DAMPLIObjectValue::set(value); };
+    virtual ObjectValue* getObjectValue() { return static_cast<DAMPLIObjectValue*>(this); };
+    static Logger& logger_m;
+};
+/*----DAMPLI object----------------------------------------------------------*/
+
 #endif
 
 class StepDirObjectValue : public ObjectValue
@@ -1131,11 +1178,11 @@ protected:
 //#include "timermanager.h"
 class PeriodicTask;
 
-class GLatitudeObjectValue : public ObjectValue
+class LocationObjectValue : public ObjectValue
 {
 public:
-    GLatitudeObjectValue(const std::string& value);
-    virtual ~GLatitudeObjectValue() {};
+    LocationObjectValue(const std::string& value);
+    virtual ~LocationObjectValue() {};
     virtual bool equals(ObjectValue* value);
     virtual int compare(ObjectValue* value);
     virtual std::string toString();
@@ -1144,28 +1191,28 @@ protected:
     virtual bool set(ObjectValue* value);
     virtual bool set(double value);
     std::string value_m;
-    GLatitudeObjectValue() {};
+    LocationObjectValue() {};
 };
 
-class GLatitudeObject : public Object, public GLatitudeObjectValue, public ChangeListener
+class LocationObject : public Object, public LocationObjectValue, public ChangeListener
 {
 public:
-    GLatitudeObject();
-    virtual ~GLatitudeObject();
+    LocationObject();
+    virtual ~LocationObject();
 
     virtual ObjectValue* createObjectValue(const std::string& value);
     virtual void setValue(const std::string& value);
-    virtual std::string getType() { return "latitude"; };
+    virtual std::string getType() { return "location"; };
 
     void setStringValue(const std::string& val);
 
     virtual void doWrite(const uint8_t* buf, int len, eibaddr_t src) {};
     virtual void doSend(bool isWrite) {};
-    virtual std::string toString() { return GLatitudeObjectValue::toString(); };
+    virtual std::string toString() { return LocationObjectValue::toString(); };
 protected:
-    virtual bool set(ObjectValue* value) { return GLatitudeObjectValue::set(value); };
-    virtual bool set(double value) { return GLatitudeObjectValue::set(value); };
-    virtual ObjectValue* getObjectValue() { return static_cast<GLatitudeObjectValue*>(this); };
+    virtual bool set(ObjectValue* value) { return LocationObjectValue::set(value); };
+    virtual bool set(double value) { return LocationObjectValue::set(value); };
+    virtual ObjectValue* getObjectValue() { return static_cast<LocationObjectValue*>(this); };
 
     virtual void importXml(ticpp::Element* pConfig);
     virtual void exportXml(ticpp::Element* pConfig);
@@ -1176,6 +1223,7 @@ protected:
     PeriodicTask*  task_m;
     std::string id_m;
     std::string badge_m;
+    std::string curr_location_m;
     std::string location_m;
     int interval_m;
 };

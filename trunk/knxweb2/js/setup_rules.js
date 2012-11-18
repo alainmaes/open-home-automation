@@ -221,7 +221,10 @@ jQuery(document).ready(function(){
   if (responseXML!=false)
   {
     $('object', responseXML).each(function() {
-      var option=$('<option>' + this.getAttribute('id') + ' ('+this.getAttribute('type')+') </option>').attr('value',this.getAttribute('id'));
+      //OPEN_HOME_AUTOMATION
+      var option=$('<option>' + this.textContent + ' ('+this.getAttribute('type')+') </option>').attr('value',this.getAttribute('id'));
+      //var option=$('<option>' + this.getAttribute('id') + ' ('+this.getAttribute('type')+') </option>').attr('value',this.getAttribute('id'));
+      //
       option[0].type=this.getAttribute('type');
       $("#tab-rules-object-condition-object").append(option);
       listobject.append(option.clone());
