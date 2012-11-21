@@ -19,9 +19,15 @@
 <table class="form">
   <tbody>
     <tr>
-      <th>{l lang='en'}Distance{/l}</th>
+      <th>{l lang='en'}Location 1{/l}</th>
       <td>
         <select id="tab-rules-distance-condition-object"></select>
+      </td>
+    </tr>
+    <tr>
+      <th>{l lang='en'}Location 2{/l}</th>
+      <td>
+        <select id="tab-rules-distance-condition-object2"></select>
       </td>
     </tr>
     <tr>
@@ -35,12 +41,6 @@
           <option value="lte">&lt;=</option>
           <option value="gte">&gt;=</option>
         </select>
-      </td>
-    </tr>
-    <tr>
-      <th>{l lang='en'}Location{/l}</th>
-      <td>
-        <input type="text" id="tab-rules-distance-condition-location">
       </td>
     </tr>
     <tr>

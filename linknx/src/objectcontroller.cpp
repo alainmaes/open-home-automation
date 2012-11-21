@@ -3902,7 +3902,11 @@ void LocationObject::importXml(ticpp::Element* pConfig)
                                        std::string lat = val.substr(offset+1);
                                        std::string lon = val.substr(0, offset);
                                        std::string newLocation = "";
-                                       newLocation.append(lat);
+                                       offset = lat.find(',');
+                                       if (offset != std::string::npos)
+                                           newLocation.append(lat.substr(0, offset));
+                                       else
+                                           newLocation.append(lat);
                                        newLocation.append(";");
                                        newLocation.append(lon);
                                        logger_m.infoStream() << "location for address: " << newLocation << endlog;
