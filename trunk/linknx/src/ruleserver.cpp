@@ -1847,31 +1847,28 @@ void ObjectCondition::statusXml(ticpp::Element* pStatus)
 
 #ifdef OPEN_HOME_AUTOMATION
 
-DistanceCondition::DistanceCondition(ChangeListener* cl) : object_m(0), ref_location_m(0), distance_m(0), cl_m(cl), trigger_m(false), op_m(eq)
+DistanceCondition::DistanceCondition(ChangeListener* cl) : object_m(0), object2_m(0), distance_m(0), cl_m(cl), trigger_m(false), op_m(eq)
 {}
 
 DistanceCondition::~DistanceCondition()
 {
-    if (ref_location_m)
-        delete ref_location_m;
     if (object_m && cl_m)
         object_m->removeChangeListener(cl_m);
     if (object_m)
         object_m->decRefCount();
+    if (object2_m && cl_m)
+        object2_m->removeChangeListener(cl_m);
+    if (object2_m)
+        object2_m->decRefCount();
 }
 
 bool DistanceCondition::evaluate()
 {
-    // if no value is defined, condition is always true
-    bool val = (ref_location_m == 0);
-    if (!val)
-    {
-        int res = object_m->get()->compare(ref_location_m);
-        
-        val = ((op_m & eq) && (res == distance_m)) || ((op_m & lt) && (res < distance_m)) || ((op_m & gt) && (res > distance_m));
-    }
+    int res = object_m->get()->compare(object2_m->get());
+    bool val = ((op_m & eq) && (res == distance_m)) || ((op_m & lt) && (res < distance_m)) || ((op_m & gt) && (res > distance_m));
+
     logger_m.infoStream() << "DistanceCondition (id='" << object_m->getID()
-    << "') evaluated as '" << val
+    << "', id2='" << object2_m->getID() << "') evaluated as '" << val
     << "'" << endlog;
     return val;
 }
@@ -1886,26 +1883,18 @@ void DistanceCondition::importXml(ticpp::Element* pConfig)
         object_m->decRefCount();
     object_m = ObjectController::instance()->getObject(id);
 
+    std::string id2;
+    id2 = pConfig->GetAttribute("id2");
+    if (object2_m)
+        object2_m->decRefCount();
+    object2_m = ObjectController::instance()->getObject(id2);
+
     if (trigger == "true")
     {
         if (!cl_m)
             throw ticpp::Exception("Trigger not supported in this context");
         trigger_m = true;
         object_m->addChangeListener(cl_m);
-    }
-
-    std::string location;
-    location = pConfig->GetAttribute("location");
-    if (location != "")
-    {
-        ref_location_m = object_m->createObjectValue(location);
-        logger_m.infoStream() << "DistanceCondition: configured ref_location_m='" << ref_location_m->toString() << "'" << endlog;
-    }
-    else
-    {
-        std::stringstream msg;
-        msg << "DistanceCondition: no reference location specified";
-        throw ticpp::Exception(msg.str());
     }
 
     std::string distance = pConfig->GetAttribute("distance");
@@ -1947,6 +1936,7 @@ void DistanceCondition::exportXml(ticpp::Element* pConfig)
 {
     pConfig->SetAttribute("type", "distance");
     pConfig->SetAttribute("id", object_m->getID());
+    pConfig->SetAttribute("id2", object2_m->getID());
     if (op_m != eq)
     {
         std::string op;
@@ -1962,7 +1952,6 @@ void DistanceCondition::exportXml(ticpp::Element* pConfig)
             op = "ne";
         pConfig->SetAttribute("op", op);
     }
-    pConfig->SetAttribute("location", ref_location_m->toString());
     pConfig->SetAttribute("distance", distance_m);
 
     if (trigger_m)

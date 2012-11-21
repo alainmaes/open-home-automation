@@ -245,6 +245,7 @@ jQuery(document).ready(function(){
       //OPEN_HOME_AUTOMATION
       if (this.getAttribute('type')=='location') {
         $("#tab-rules-distance-condition-object").append(option.clone());
+        $("#tab-rules-distance-condition-object2").append(option.clone()); 
       }
 
       if (this.getAttribute('type')=='DBIR01' ||

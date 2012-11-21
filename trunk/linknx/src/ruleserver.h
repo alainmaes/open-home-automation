@@ -134,6 +134,7 @@ public:
 
 protected:
     Object* object_m;
+    Object* object2_m;    
     ChangeListener* cl_m;
     bool trigger_m;
     int op_m;
@@ -144,7 +145,6 @@ protected:
         lt = 0x04
     };
 private:
-    ObjectValue* ref_location_m;
     int distance_m;
 };
 #endif

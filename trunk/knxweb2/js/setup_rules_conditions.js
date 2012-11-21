@@ -240,10 +240,10 @@ $.extend(rules, {
         break;
       case "distance": //OPEN_HOME_AUTOMATION
         div[0].object_id=condition.getAttribute('id');
+        div[0].object_id2=condition.getAttribute('id2');
         div[0].object_operation=condition.getAttribute('op');
         if(!div[0].object_operation) div[0].object_operation='eq';
         div[0].object_distance=condition.getAttribute('distance');
-        div[0].object_location=condition.getAttribute('location');
         div[0].object_trigger=condition.getAttribute('trigger');
         break;
       
@@ -392,9 +392,9 @@ $.extend(rules, {
         break;
       case "distance": //OPEN_HOME_AUTOMATION
         div[0].object_id='';
+        div[0].object_id2='';
         div[0].object_operation='eq';
         div[0].object_distance='0';
-        div[0].object_location='0;0';        
         div[0].object_trigger=false;
         break;
     };
@@ -566,8 +566,8 @@ $.extend(rules, {
         break;
       case "distance": //OPEN_HOME_AUTOMATION
         $('#tab-rules-distance-condition-object').val(div.object_id);
+        $('#tab-rules-distance-condition-object2').val(div.object_id2);
         $('#tab-rules-distance-condition-operation').val(div.object_operation);
-        $('#tab-rules-distance-condition-location').val(div.object_location);
         $('#tab-rules-distance-condition-distance').val(div.object_distance);
         $("#tab-rules-distance-condition-object").trigger('change');
         if (div.object_trigger) $('#tab-rules-distance-condition-trigger').attr('checked','1').trigger('change'); 
@@ -722,15 +722,9 @@ $.extend(rules, {
         break;
       case "distance": //OPEN_HOME_AUTOMATION
         div.object_id=$('#tab-rules-distance-condition-object').val();
+        div.object_id2=$('#tab-rules-distance-condition-object2').val();
         div.object_operation=$('#tab-rules-distance-condition-operation').val();
-        //if ($('#tab-rules-distance-condition-values').css('display')!='none') {
-        //  div.object_distance=$('#tab-rules-distance-condition-distance').val();
-        //}
-        //else {
-          div.object_location=$('#tab-rules-distance-condition-location').val();
-          div.object_distance=$('#tab-rules-distance-condition-distance').val();
-        //}
-        //if ($('#tab-rules-distance-condition-trigger').is(':checked')) div.object_trigger=true; else div.object_trigger=false;
+        div.object_distance=$('#tab-rules-distance-condition-distance').val();
         div.object_trigger=$('#tab-rules-distance-condition-trigger').is(':checked');
 
         if (div.object_operation == "eq")
@@ -749,7 +743,7 @@ $.extend(rules, {
             operationString = "???";
 
         html = '<br />' + div.object_id + '<br />from<br />' + 
-               div.object_location + '<br />' + operationString +
+               div.object_id2 + '<br />' + operationString +
                '<br />' + div.object_distance + ' meters';
         break;
     };
@@ -877,8 +871,8 @@ $.extend(rules, {
         break;
       case 'distance': //OPEN_HOME_AUTOMATION
         xml.attr('id',condition[0].object_id);
+        xml.attr('id2',condition[0].object_id2);
         xml.attr('op',condition[0].object_operation);
-        xml.attr('location',condition[0].object_location);
         xml.attr('distance',condition[0].object_distance);
         if (condition[0].object_trigger) xml.attr('trigger','true');
         break;
