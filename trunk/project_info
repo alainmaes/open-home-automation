@@ -31,6 +31,8 @@ patch -p0 < /tmp/patch
 DNS-320
 -------
 
+pthsem =>    $ ./configure --with-mctx-mth=sjlj --with-mctx-dsp=ssjlj --with-mctx-stk=sas --prefix=/ffp
+
 make TMPDIR=/ffp/tmp
 touch /ffp/etc/fun_plug.local
 chmod a+x /ffp/etc/fun_plug.local
