@@ -1,4 +1,5 @@
 <?php
+error_reporting(100);
 
 	if (!file_exists('include/config.xml') || file_get_contents( 'include/config.xml' ) == '')
 	{
@@ -9,6 +10,57 @@
   $_config = (array)simplexml_load_file('include/config.xml'); // conversion en array du fichier xml de configuration
   unset($_config['comment']); // enleve les commentaires
 
+/* OPEN_HOME_AUTOMATION */
+
+  session_start();
+  
+  if (!isset($_SESSION['registered']) || $_SESSION['registered'] == false)
+  {
+      $_SESSION['registered'] = false;
+      $_SESSION['attempts'] += 1;
+
+      if (isset($_SESSION['attempts']) && $_SESSION['attempts'] > 3) {
+          echo 'Authentication required!';
+          exit;
+      }
+          
+      if (!isset($_SERVER['PHP_AUTH_USER']))
+      {
+          header('WWW-Authenticate: Basic realm="My Realm"');
+          header('HTTP/1.0 401 Unauthorized');
+          echo 'Authentication required!';
+          exit;
+      } else {
+          $sock = fsockopen($_config['linknx_host'], $_config['linknx_port'], $errno, $errstr, 30);
+          if (!$sock)
+              $result = "<response status='error'>Unable to connect to linknx</response>\n";
+          else {
+              $request = "<authenticate id='" . $_SERVER['PHP_AUTH_USER'] . "' pw-type='plain' password='" . $_SERVER['PHP_AUTH_PW'] . "' />";
+              fwrite($sock, $request . chr(4));
+              $result = '';
+              $cnt = 0;
+              $max_result_lines = 33;
+              while ($cnt < $max_result_lines && $sock && !feof($sock)) {
+                  $c = fgetc($sock);
+                  if ($c == "\4")	break;
+                  $result .= $c;
+                  $cnt++;
+              }
+	      fclose($sock);
+
+              if (strcmp($result, "<authenticate status='success'/>") != 0)
+              {
+                  header('WWW-Authenticate: Basic realm="My Realm"');
+                  header('HTTP/1.0 401 Unauthorized');
+                  echo 'Authentication required!';
+                  exit;
+              }
+              $_SESSION['registered'] = true;
+              $_SESSION['attempts'] = 0;
+          }
+      }
+  }
+/* OPEN_HOME_AUTOMATION */
 
   $version_knxweb2 = exec('cat version');
   if ($_config["version"] != $version_knxweb2) {
