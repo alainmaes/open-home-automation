@@ -29,6 +29,9 @@
 #include "objectcontroller.h"
 #include "timermanager.h"
 #include "services.h"
+#ifdef OPEN_HOME_AUTOMATION
+#include "usercontroller.h"
+#endif
 
 XmlServer::~XmlServer ()
 {
@@ -201,7 +204,31 @@ void ClientConnection::Run (pth_sem_t * stop1)
 
             ticpp::Element* pMsg = doc.FirstChildElement();
             msgType = pMsg->Value();
+#ifdef OPEN_HOME_AUTOMATION
+            if (msgType == "authenticate")
+            {
+                std::string id = pMsg->GetAttribute("id");
+                std::string pwType = pMsg->GetAttribute("pw-type");
+                std::string password = pMsg->GetAttribute("password");
+                
+                if (UserController::instance()->authenticate(id, pwType, password))
+                {
+                    std::stringstream msg;
+                    msg << "<authenticate status='success'/>";
+                    debugStream("ClientConnection") << "SENDING MESSAGE:" << endlog
+                                                    << msg.str() << endlog
+                                                    << "END OF MESSAGE" << endlog;
+                    sendmessage (msg.str(), stop);
+                }
+                else
+                {
+                    throw "Authentication failed";
+                }
+            }
+            else if (msgType == "read")
+#else
             if (msgType == "read")
+#endif
             {
                 ticpp::Element* pRead = pMsg->FirstChildElement();
                 if (pRead->Value() == "object")
@@ -244,6 +271,12 @@ void ClientConnection::Run (pth_sem_t * stop1)
                     ticpp::Element* pConfig = pRead->FirstChildElement(false);
                     if (pConfig == 0)
                     {
+#ifdef OPEN_HOME_AUTOMATION
+                        ticpp::Element users("users");
+                        UserController::instance()->exportXml(&users);
+                        pRead->LinkEndChild(&users);
+#endif
+
                         ticpp::Element objects("objects");
                         ObjectController::instance()->exportXml(&objects);
                         pRead->LinkEndChild(&objects);
@@ -442,6 +475,10 @@ void ClientConnection::Run (pth_sem_t * stop1)
                         {
                             if (pConfigItem->Value() == "objects")
                                 ObjectController::instance()->importXml(&(*pConfigItem));
+#ifdef OPEN_HOME_AUTOMATION
+                            else if (pConfigItem->Value() == "users")
+                                UserController::instance()->importXml(&(*pConfigItem));
+#endif
                             else if (pConfigItem->Value() == "rules")
                                 RuleServer::instance()->importXml(&(*pConfigItem));
                             else if (pConfigItem->Value() == "services")
@@ -527,7 +564,13 @@ void ClientConnection::Run (pth_sem_t * stop1)
                             doc.LinkEndChild(&decl);
                     
                             ticpp::Element pConfig("config");
-                    
+
+#ifdef OPEN_HOME_AUTOMATION
+                            ticpp::Element pUsers("users");
+                            UserController::instance()->exportXml(&pUsers);
+                            pConfig.LinkEndChild(&pUsers);
+#endif
+
                             ticpp::Element pServices("services");
                             Services::instance()->exportXml(&pServices);
                             pConfig.LinkEndChild(&pServices);

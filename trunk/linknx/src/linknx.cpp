@@ -38,6 +38,9 @@
 #include "timermanager.h"
 #include "xmlserver.h"
 #include "smsgateway.h"
+#ifdef OPEN_HOME_AUTOMATION
+#include "usercontroller.h"
+#endif
 
 /** structure to store the arguments */
 struct arguments
@@ -182,6 +185,9 @@ main (int ac, char *ag[])
             fclose (pidf);
         }
 
+#ifdef OPEN_HOME_AUTOMATION
+    UserController *users = UserController::instance();
+#endif
     Logging* logging = Logging::instance();
     RuleServer* rules = RuleServer::instance();
     ObjectController* objects = ObjectController::instance();
@@ -210,6 +216,12 @@ main (int ac, char *ag[])
 
         try
         {
+#ifdef OPEN_HOME_AUTOMATION
+            ticpp::Element* pUsers = pConfig->FirstChildElement("users", false);
+            if (pUsers != NULL)
+                users->importXml(pUsers);
+            logger.debugStream() << "Users loaded" << endlog;
+#endif            
             ticpp::Element* pServices = pConfig->FirstChildElement("services", false);
             if (pServices != NULL)
                 services->importXml(pServices);
