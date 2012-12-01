@@ -1,20 +1,31 @@
 <?xml version="1.0" ?>
 <config>
+    <users>
+        <user id="admin" pw-type="encoded" password="Z3Vlc3NUaGlz" />
+        <user id="guest" pw-type="encoded" password="Z3Vlc3Q=" />
+        <user id="guest2" pw-type="encoded" password="YWJj" />
+    </users>
+    <services>
+        <smsgateway />
+        <emailserver />
+        <xmlserver type="inet" port="10280" />
+        <knxconnection url="" />
+        <domintellconnection url="" autodiscovery="false" keepalive="0" />
+        <exceptiondays />
+        <ioports />
+    </services>
     <objects>
-        <object type="contact" id="FirstLast" firstName="First" lastName="Last" homePhone="+3231111111" officePhone="+3231111111" mobilePhone="+32111111111" email="me@mail.com" birthDay="18/2">First Last</object> 
+        <object type="contact" id="FirstLast" firstName="First" lastName="Last" homePhone="+3231111111" officePhone="+3231111111" mobilePhone="+32111111111" email="me@mail.com">First Last</object>
     </objects>
     <rules>
         <rule id="__bday_FirstLast">
             <condition type="timer" trigger="true">
-                <at month="2" day="18" hour="6" min="30" />
+                <at hour="6" min="30" day="18" month="2" />
             </condition>
             <actionlist>
                 <action type="send-sms" id="FirstLast" value="Happy Birthday!" />
             </actionlist>
         </rule>
     </rules>
-    <services>
-        <xmlserver type="inet" port="10280"/>
-        <emailserver type="smtp" host="smtp://smtp.myprovider.com" from="me@provider.com" login="myLogin" pass="myPass"/>
-    </services>
+    <logging level="DEBUG" />
 </config>

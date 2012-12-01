@@ -37,7 +37,7 @@
 #include <algorithm>
 #include "ruleserver.h"
 #include "services.h"
-
+#include "usercontroller.h"
 
 /** unsigned char */
 typedef uint8_t uchar;
@@ -613,6 +613,9 @@ void DomintellConnection::Run (pth_sem_t * stop1)
                             doc.LinkEndChild(&decl);
                             ticpp::Element pConfig("config");
                     
+                            ticpp::Element pUsers("users");
+                            UserController::instance()->exportXml(&pUsers);
+                            pConfig.LinkEndChild(&pUsers);
                             ticpp::Element pServices("services");
                             Services::instance()->exportXml(&pServices);
                             pConfig.LinkEndChild(&pServices);
