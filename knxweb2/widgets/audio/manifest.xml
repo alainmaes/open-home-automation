@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<widget>
+  <name>audio</name>
+  <label>DAMPLI01</label>
+  <description>Domintell Audio</description>
+  <version>1.0</version>
+  <category>Advanced widgets</category>
+  <settings>
+    <setting label="DAMPLI01 output" type="comment" default="" />
+    <setting id="feedback-object" label="Output" type="object" only_type="DAMPLI01" />
+    <setting id="titleLabel" label="Title" type="text" default="Audio" />
+    <setting label="Inputs" type="comment" default="" />
+    <setting id="tunerLabel" label="Tuner" type="text" default="Radio" />
+    <setting id="aux1Label" label="Aux1" type="text" default="Aux1" />
+    <setting id="aux2Label" label="Aux2" type="text" default="Aux2" />
+    <setting id="aux3Label" label="Aux3" type="text" default="Aux3" />
+    <setting id="aux4Label" label="Aux4" type="text" default="Aux4" />
+    <setting label="Channels" type="comment" default="" />
+    <setting id="test" label="test" type="multipleObject" />     
+    <setting label="Volume" type="comment" default="" />
+    <setting id="min" label="Minimum value" type="text" default="0" />
+    <setting id="max" label="Maximum value" type="text" default="100" />
+    <setting id="slider-color" label="Slider color" type="color" default="#FF0000" />
+    <setting id="border" label="Border" type="list" default="true">
+      <option key="true" value="Yes" />
+      <option key="false" value="No" />
+    </setting>
+    <setting id="border-color" label="Border color" type="color" default="#000000" />
+    <setting id="orientation" label="Orientation" type="list" default="horizontal">
+      <option key="horizontal" value="horizontal"/>
+      <option key="vertical" value="Vertical"/>
+    </setting>
+    <setting id="position" label="Position" type="list" default="right_bottom">
+      <option key="left_top" value="left or top"/>
+      <option key="right_bottom" value="right or bottom"/>
+    </setting>
+    </settings>
+  <feedbacks>
+    <feedback id="feedback-object" />
+  </feedbacks>
+</widget>
