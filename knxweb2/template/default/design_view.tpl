@@ -16,8 +16,16 @@
 		{foreach from=$jsList item=js}
 		<script type="text/javascript" src="{$js}"></script>
 		{/foreach}
+
+<!-- OPEN_HOME_AUTOMATION -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<!-- OPEN_HOME_AUTOMATION -->
+
 </head>
-<body>
+<!-- OPEN_HOME_AUTOMATION body -->
+<body onload="window.scrollTo(0, 1);">
 
 {if $_config.useJavaIfAvailable=='true'}
 <applet code="org.knxweb.objectupdater.objectUpdater.class" archive="objectUpdater.jar" width="1" height="1">
