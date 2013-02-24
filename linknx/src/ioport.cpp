@@ -205,6 +205,7 @@ void RxThread::Run (pth_sem_t * stop1)
     uint8_t buf[1024];
     int retval;
     logger_m.debugStream() << "Start IO Port loop." << endlog;
+    memset(buf, 0, sizeof(buf));
     while ((retval = port_m->get(buf, sizeof(buf), stop_m)) > 0)
     {
         ListenerList_t::iterator it;
@@ -213,6 +214,7 @@ void RxThread::Run (pth_sem_t * stop1)
 //            logger_m.debugStream() << "Calling onDataReceived on listener for " << port_m->getID() << endlog;
             (*it)->onDataReceived(buf, retval);
         }
+        memset(buf, 0, sizeof(buf));
     }
     logger_m.debugStream() << "Out of IO Port loop." << endlog;
     pth_event_free (stop_m, PTH_FREE_THIS);
@@ -680,17 +682,21 @@ int SerialIOPort::send(const uint8_t* buf, int len)
 
 int SerialIOPort::get(uint8_t* buf, int len, pth_event_t stop)
 {
-    logger_m.debugStream() << "get(buf, len=" << len << "):"
-        << buf << endlog;
+//    logger_m.debugStream() << "get(buf, len=" << len << "):"
+//        << buf << endlog;
     if (fd_m >= 0) {
         ssize_t i = pth_read_ev(fd_m, buf, len, stop);
 //        logger_m.debugStream() << "Out of recvfrom " << i << " rl=" << rl << endlog;
         if (i > 0)
         {
-            std::string msg(reinterpret_cast<const char*>(buf), i);
-            logger_m.debugStream() << "Received '" << msg << "' on ioport " << getID() << endlog;
+            if (i < len)
+                buf[i] = 0;
+
+//            std::string msg(reinterpret_cast<const char*>(buf), i);
+//            logger_m.debugStream() << "Received '" << msg << "' on ioport " << getID() << endlog;
             return i;
         }
+        return 0;
     }
     return -1;
 }
