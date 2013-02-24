@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 
 {
         int sock, bytes_recieved;
-        char send_data[1024],recv_data[1024];
+        char send_data[1024],recv_data[102400];
         struct hostent *host;
         struct sockaddr_in server_addr;
 
@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
         snprintf(send_data, sizeof(send_data), "%s%c", argv[3], '\004');
         send(sock,send_data,strlen(send_data), 0);
-        bytes_recieved=recv(sock,recv_data,1024,0);
+        bytes_recieved=recv(sock,recv_data,sizeof(recv_data),0);
         recv_data[bytes_recieved-1] = '\0';
 
         printf("%s" , recv_data);
