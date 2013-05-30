@@ -21,10 +21,19 @@
 #include <iomanip>
 #include "ioport.h"
 #include <fcntl.h>
+#ifdef OPEN_HOME_AUTOMATION
+#include <algorithm>
+#include "ruleserver.h"
+#include "services.h"
+#include "usercontroller.h"
+#endif
 
 Logger& IOPort::logger_m(Logger::getInstance("IOPort"));
 Logger& RxThread::logger_m(Logger::getInstance("RxThread"));
 Logger& UdpIOPort::logger_m(Logger::getInstance("UdpIOPort"));
+#ifdef OPEN_HOME_AUTOMATION
+Logger& ArduinoUdpIOPort::logger_m(Logger::getInstance("ArduinoUdpIOPort"));
+#endif
 Logger& TcpClientIOPort::logger_m(Logger::getInstance("TcpClientIOPort"));
 Logger& SerialIOPort::logger_m(Logger::getInstance("SerialIOPort"));
 
@@ -128,6 +137,10 @@ IOPort* IOPort::create(const std::string& type)
 {
     if (type == "" || type == "udp")
         return new UdpIOPort();
+#ifdef OPEN_HOME_AUTOMATION
+    else if (type == "arduino")
+        return new ArduinoUdpIOPort();
+#endif
     else if (type == "tcp")
         return new TcpClientIOPort();
     else if (type == "serial")
@@ -314,6 +327,248 @@ int UdpIOPort::get(uint8_t* buf, int len, pth_event_t stop)
     return -1;
 }
 
+#ifdef OPEN_HOME_AUTOMATION
+ArduinoUdpIOPort::ArduinoUdpIOPort() : sockfd_m(-1), port_m(0)
+{
+    memset (&addr_m, 0, sizeof (addr_m));
+}
+
+ArduinoUdpIOPort::~ArduinoUdpIOPort()
+{
+    if (sockfd_m >= 0)
+        close(sockfd_m);
+    Logger::getInstance("ArduinoUdpIOPort").debugStream() << "Deleting ArduinoUdpIOPort " << endlog;
+}
+
+void ArduinoUdpIOPort::importXml(ticpp::Element* pConfig)
+{
+    memset (&addr_m, 0, sizeof (addr_m));
+    addr_m.sin_family = AF_INET;
+    pConfig->GetAttribute("port", &port_m);
+    addr_m.sin_port = htons(port_m);
+    host_m = pConfig->GetAttribute("host");
+    addr_m.sin_addr.s_addr = inet_addr(host_m.c_str());
+    IOPort::importXml(pConfig);
+
+    sockfd_m = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd_m >= 0)
+    {
+#if 0
+        if (bind(sockfd_m, (struct sockaddr *)&addr_m,sizeof(addr)) < 0) /* error */
+        {
+            logger_m.errorStream() << "Unable to bind socket for arduino " << getID() << endlog;
+        }
+#endif
+    }
+    else {
+        logger_m.errorStream() << "Unable to create  socket for arduino " << getID() << endlog;
+    }    
+    
+   
+    logger_m.infoStream() << "ArduinoUdpIOPort configured for host " << host_m << " and port " << port_m << endlog;
+
+    addListener(this);
+
+    send((const uint8_t*)"LOGIN", 5);
+    send((const uint8_t*)"CONFIG", 6);
+}
+
+void ArduinoUdpIOPort::exportXml(ticpp::Element* pConfig)
+{
+    IOPort::exportXml(pConfig);
+    pConfig->SetAttribute("type", "arduino");
+    pConfig->SetAttribute("host", host_m);
+    pConfig->SetAttribute("port", port_m);
+}
+
+int ArduinoUdpIOPort::send(const uint8_t* buf, int len)
+{
+    logger_m.infoStream() << "send(buf, len=" << len << "):"
+        << buf << endlog;
+
+    if (sockfd_m >= 0) {
+        ssize_t nbytes = pth_sendto(sockfd_m, buf, len, 0,
+               (const struct sockaddr *) &addr_m, sizeof (addr_m));
+        if (nbytes == len) {
+            return nbytes;
+        }
+        else {
+            logger_m.errorStream() << "Unable to send to socket for arduino " << getID() << endlog;
+        }
+    }
+    return -1;
+}
+
+int ArduinoUdpIOPort::get(uint8_t* buf, int len, pth_event_t stop)
+{
+    //logger_m.debugStream() << "get(buf, len=" << len << "):"
+    //    << buf << endlog;
+    if (sockfd_m >= 0) {
+        socklen_t rl;
+        sockaddr_in r;
+        rl = sizeof (r);
+        memset (&r, 0, sizeof (r));
+        ssize_t i = pth_recvfrom_ev(sockfd_m, buf, len, 0,
+               (struct sockaddr *) &r, &rl, stop);
+        //logger_m.debugStream() << "Out of recvfrom " << i << " rl=" << rl << endlog;
+        if (i > 0 && rl == sizeof (r))
+        {
+            std::string msg(reinterpret_cast<const char*>(buf), i);
+            logger_m.debugStream() << "Received '" << msg << "' on arduino " << getID() << endlog;
+            return i;
+        }
+    }
+    return -1;
+}
+
+void ArduinoUdpIOPort::onDataReceived(const uint8_t* buf, unsigned int len)
+{
+    Object *obj = NULL;
+    std::string msg(reinterpret_cast<const char*>(buf), len);
+
+    if (msg.substr(0,3) == "PIN")
+    {
+        int pos;
+
+        /* Format: PIN 1/8 relay */
+        
+        if (msg.find(' ') == std::string::npos)
+            return;
+        
+        msg.erase(0, 4);
+
+        pos = msg.find(' ');
+        std::string address = getID();
+        address.append("/");
+        address.append(msg.substr(0, pos));
+        msg.erase(0, pos + 1);
+
+//temperature => ValueObject32
+
+        if (msg != "input" && msg != "output" && msg != "relay" && msg != "DHT11")
+        {
+            logger_m.errorStream() << "++++ Received INVALID type: " << msg << endlog;
+            return;
+        }
+        
+        if (ObjectController::instance()->objectExistsForAddress(address))
+        {
+            obj = ObjectController::instance()->getObjectForAddress(address);
+            obj->decRefCount();            
+
+            if ((msg == "input" && obj->getType() != "1.001") ||
+                (msg == "output" && obj->getType() != "1.001") ||
+                (msg == "relay" && obj->getType() != "1.001") ||
+                (msg == "DHT11" && obj->getType() != "14.xxx"))
+            {
+                logger_m.errorStream() << "++++ Type changed for " << address << endlog;
+                ObjectController::instance()->removeObject(obj);
+                obj = NULL;
+            }
+        }
+
+        if (!obj)
+        {
+            if (msg == "input")
+                obj = Object::create("1.001");
+            else if (msg == "output")
+                obj = Object::create("1.001");
+            else if (msg == "relay")
+                obj = Object::create("1.001");
+            else if (msg == "DHT11")
+                obj = Object::create("14.xxx");
+
+            if (!obj)
+            {
+                logger_m.errorStream() << "++++ Failed to create new object " << address << endlog; 
+                return;
+            }
+
+            std::string id = address;
+            replace(id.begin(), id.end(), '/', '-');
+            obj->setID(id.c_str());
+            obj->setAddress(address.c_str());
+            obj->setDescr(address.c_str());
+            ObjectController::instance()->addObject(obj);
+
+            std::string filename = Services::instance()->getConfigFile();
+            if (filename != "")
+            {
+                try
+	        {
+                    // Save a document
+                    ticpp::Document doc;
+                    ticpp::Declaration decl("1.0", "", "");
+                    doc.LinkEndChild(&decl);
+                    ticpp::Element pConfig("config");
+
+                    ticpp::Element pUsers("users");
+                    UserController::instance()->exportXml(&pUsers);
+                    pConfig.LinkEndChild(&pUsers);
+                    ticpp::Element pServices("services");
+                    Services::instance()->exportXml(&pServices);
+                    pConfig.LinkEndChild(&pServices);
+                    ticpp::Element pObjects("objects");
+                    ObjectController::instance()->exportXml(&pObjects);
+                    pConfig.LinkEndChild(&pObjects);
+                    ticpp::Element pRules("rules");
+                    RuleServer::instance()->exportXml(&pRules);
+                    pConfig.LinkEndChild(&pRules);
+                    ticpp::Element pLogging("logging");
+                    Logging::instance()->exportXml(&pLogging);
+                    pConfig.LinkEndChild(&pLogging);
+
+                    doc.LinkEndChild(&pConfig);
+                    doc.SaveFile(filename);
+                }
+                catch( ticpp::Exception& ex )
+                {
+                    // If any function has an error, execution will enter here.
+                    // Report the error
+                    logger_m.errorStream() << "Unable to write config to file: " << ex.m_details << endlog;
+                    //throw "Error writing config to file";
+                }
+            }
+        }
+
+        return;
+    }
+
+    /* pin state update */
+    if (msg.find(' ') == std::string::npos)
+        return;
+
+    std::string address = getID();
+    address.append("/");
+    address.append(msg.substr(0, msg.find(' ')));
+
+    //logger_m.errorStream() << "++++ Received update for '" << address << endlog;
+
+    if (!ObjectController::instance()->objectExistsForAddress(address))
+    {
+        return;
+    }
+
+    obj = ObjectController::instance()->getObjectForAddress(address);
+    obj->decRefCount();
+
+    if (obj && msg.find(' ') != std::string::npos)
+    {
+        std::string value = msg.substr(msg.find(' '));
+        while (value.length() > 0 && value.at(0) == ' ')
+            value.erase(0, 1);
+        try
+        {
+            obj->updateValueFromExternalInput(value);
+        }
+        catch (ticpp::Exception& ex)
+        {
+            logger_m.errorStream() << "Parsing failed: " << ex.m_details << endlog;
+        }
+    }
+}
+#endif
+
 TcpClientIOPort::TcpClientIOPort() : sockfd_m(-1), port_m(0)
 {
     memset (&addr_m, 0, sizeof (addr_m));
@@ -438,6 +693,7 @@ SerialIOPort::SerialIOPort() : fd_m(-1)
 SerialIOPort::~SerialIOPort()
 {
     if (fd_m >= 0) {
+    int rxport_m;
         // restore old port settings
         tcsetattr(fd_m, TCSANOW, &oldtio_m);
         close(fd_m);

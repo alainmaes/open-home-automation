@@ -25,7 +25,30 @@
 #include "logger.h"
 #include "ticpp.h"
 
+#ifdef OPEN_HOME_AUTOMATION
+#include "ioport.h"
+
+class SmsPollThread;
+
+typedef struct
+{
+    std::string id;
+    std::string from;
+    std::string message;
+    bool complete;
+} SmsMessage;
+
+class SmsListener
+{
+public:
+    virtual ~SmsListener() {};
+    virtual void onSmsReceived(SmsMessage *message) = 0;
+};
+
+class SmsGateway : IOPortListener
+#else
 class SmsGateway
+#endif
 {
 public:
     SmsGateway();
@@ -36,10 +59,23 @@ public:
 
     void sendSms(std::string &id, std::string &value);
 
+#ifdef OPEN_HOME_AUTOMATION
+    void onDataReceived(const uint8_t* buf, unsigned int len);
+
+    void addListener(SmsListener *listener);
+    bool removeListener(SmsListener *listener);
+
+    void sendAT(std::string command);
+    
+#endif
+
 private:
     enum SmsGatewayType
     {
         Clickatell,
+#ifdef OPEN_HOME_AUTOMATION
+        IoPort,
+#endif
         Unknown
     };
 
@@ -49,8 +85,51 @@ private:
     std::string pass_m;
     std::string data_m;
     std::string from_m;
+#ifdef OPEN_HOME_AUTOMATION
+    std::string ioport_m;
+
+    typedef std::list<SmsListener*> SmsListenerList_t;
+    SmsListenerList_t listenerList_m;
+
+    std::auto_ptr<SmsPollThread> pollThread_m;    
+#endif
 
     static Logger& logger_m;
 };
+
+#ifdef OPEN_HOME_AUTOMATION
+class SmsPollThread : public Thread
+{
+public:
+    SmsPollThread();
+    virtual ~SmsPollThread();
+
+private:
+    void Run (pth_sem_t * stop);
+    static Logger& logger_m;
+};
+
+
+
+class RxSmsCondition : public Condition, public SmsListener
+{
+public:
+    RxSmsCondition(ChangeListener* cl);
+    virtual ~RxSmsCondition();
+
+    virtual bool evaluate();
+    virtual void importXml(ticpp::Element* pConfig);
+    virtual void exportXml(ticpp::Element* pConfig);
+    virtual void statusXml(ticpp::Element* pStatus);
+
+    virtual void onSmsReceived(SmsMessage *message);
+
+private:
+    std::string from_m;
+    std::string exp_m;
+    bool value_m;
+    ChangeListener* cl_m;
+};
+#endif
 
 #endif

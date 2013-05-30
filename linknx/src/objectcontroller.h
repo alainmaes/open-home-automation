@@ -69,6 +69,9 @@ public:
     virtual void setValue(ObjectValue* value);
     virtual void setValue(const std::string& value) = 0;
     virtual void setFloatValue(double value);
+#ifdef OPEN_HOME_AUTOMATION
+    void updateValueFromExternalInput(const std::string& value);
+#endif
     virtual ObjectValue* get();
     virtual std::string getValue() { return get()->toString(); };
     virtual double getFloatValue() { return get()->toNumber(); };
@@ -85,7 +88,7 @@ public:
     const char* getDescr() { return descr_m.c_str(); };
 #ifdef OPEN_HOME_AUTOMATION
     void setAddress(const char* address) { address_m = address; };
-    virtual std::string getAddress() { return address_m; };    
+    virtual std::string getAddress() { return address_m; };
 #endif
     const eibaddr_t getGad() { return gad_m; };
     const eibaddr_t getReadRequestGad() { return readRequestGad_m; };
@@ -1250,6 +1253,8 @@ public:
     Object* getObject(const std::string& id);
 #ifdef OPEN_HOME_AUTOMATION
     bool objectExists(const std::string& id);
+    Object* getObjectForAddress(const std::string& address);
+    bool objectExistsForAddress(const std::string& address);
 #endif
     virtual void importXml(ticpp::Element* pConfig);
     virtual void exportXml(ticpp::Element* pConfig);
@@ -1276,6 +1281,11 @@ private:
     typedef std::map<std::string ,Object*> ObjectIdMap_t;
     ObjectMap_t objectMap_m;
     ObjectIdMap_t objectIdMap_m;
+#ifdef OPEN_HOME_AUTOMATION
+    typedef std::pair<std::string ,Object*> ObjectAddressPair_t;
+    typedef std::map<std::string ,Object*> ObjectAddressMap_t;
+    ObjectAddressMap_t objectAddressMap_m;
+#endif
     static ObjectController* instance_m;
 };
 

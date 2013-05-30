@@ -444,6 +444,10 @@ Action* Action::create(const std::string& type)
         return new SetRuleActiveAction();
     else if (type == "formula")
         return new FormulaAction();
+#ifdef OPEN_HOME_AUTOMATION
+    else if (type == "sql")
+        return new SQLAction();
+#endif
     else
         return 0;
 }
@@ -548,6 +552,101 @@ bool Action::parseVarString(std::string &str, bool checkOnly)
     }
     return modified;
 }
+
+#ifdef OPEN_HOME_AUTOMATION
+SQLAction::SQLAction()
+{}
+ 
+SQLAction::~SQLAction()
+{
+    Stop();
+    while (!actionsList_m.empty())
+    {
+        delete actionsList_m.front();
+        actionsList_m.pop_front();
+    }
+}
+
+void SQLAction::importXml(ticpp::Element* pConfig)
+{
+    std::string id;
+    id = pConfig->GetAttribute("id");
+
+    query_m = pConfig->GetAttributeOrDefault("query", "");
+    if (query_m == "")
+        throw ticpp::Exception("No query specified");
+
+    ticpp::Iterator<ticpp::Element> actionIt("action");
+    for (actionIt = pConfig->FirstChildElement("action", false); actionIt != actionIt.end(); actionIt++ )
+    {
+        if ((actionIt)->GetAttribute("type") == "repeat" ||
+            (actionIt)->GetAttribute("type") == "conditional" ||
+            (actionIt)->GetAttribute("type") == "sql")
+        {
+            throw ticpp::Exception("No query specified");
+        }
+    }
+    for (actionIt = pConfig->FirstChildElement("action", false); actionIt != actionIt.end(); actionIt++ )
+    {
+        Action* action = Action::create(&(*actionIt));
+        actionsList_m.push_back(action);
+    }
+}
+
+void SQLAction::exportXml(ticpp::Element* pConfig)
+{
+    pConfig->SetAttribute("type", "sql");
+    pConfig->SetAttribute("query", query_m);
+
+    Action::exportXml(pConfig);
+
+    ActionsList_t::iterator it;
+    for(it=actionsList_m.begin(); it != actionsList_m.end(); ++it)
+    {
+        ticpp::Element pElem("action");
+        (*it)->exportXml(&pElem);
+        pConfig->LinkEndChild(&pElem);
+    }
+}
+
+#include <pthsem.h>
+
+void SQLAction::Run (pth_sem_t * stop)
+{
+    if (sleep(delay_m, stop))
+        return;
+    logger_m.infoStream() << "Execute SQLAction" << endlog;
+    
+    sqlite3 *db;
+    int ret = sqlite3_open("test.db", &db);
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare(db, query_m.c_str(), strlen(query_m.c_str()), &stmt, 0);
+    while(sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        //printf( (char *)sqlite3_column_text(stmt, 1) );
+        ActionsList_t::iterator it;
+        for(it=actionsList_m.begin(); it != actionsList_m.end(); ++it)
+        {
+            (*it)->execute();
+            while (!(*it)->isFinished())
+            {
+                if (sleep(100, stop))
+                {
+                    logger_m.infoStream() << "SQLAction canceled." << endlog;
+                    for(it=actionsList_m.begin(); it != actionsList_m.end(); ++it)
+                        (*it)->cancel();
+                    goto done;
+                }
+            }
+        }
+    }
+
+done:
+    sqlite3_finalize(stmt);
+    sqlite3_close(db); 
+}
+
+#endif
 
 DimUpAction::DimUpAction() : object_m(0), start_m(0), stop_m(255), duration_m(60)
 {}
@@ -1230,7 +1329,11 @@ void ConditionalAction::Run (pth_sem_t * stop)
     }
 }
 
+#ifdef OPEN_HOME_AUTOMATION
+SendSmsAction::SendSmsAction() : varFlags_m(0), object_m(NULL)
+#else
 SendSmsAction::SendSmsAction() : varFlags_m(0)
+#endif
 {}
 
 SendSmsAction::~SendSmsAction()
@@ -1564,6 +1667,8 @@ Condition* Condition::create(const std::string& type, ChangeListener* cl)
 #ifdef OPEN_HOME_AUTOMATION
      else if (type == "distance")
         return new DistanceCondition(cl);
+     else if (type == "sms-rx")
+        return new RxSmsCondition(cl);
 #endif
     else
         return 0;
