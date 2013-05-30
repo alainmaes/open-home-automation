@@ -225,6 +225,30 @@ void ClientConnection::Run (pth_sem_t * stop1)
                     throw "Authentication failed";
                 }
             }
+            else if (msgType == "sql")
+            {
+                std::string dbStr = pMsg->GetAttribute("db");
+                std::string queryStr = pMsg->GetAttribute("query");
+               
+                sqlite3 *db;
+                int ret = sqlite3_open(dbStr.c_str(), &db);
+                sqlite3_stmt *stmt;
+                int rc = sqlite3_prepare(db, queryStr.c_str(),
+                                         strlen(queryStr.c_str()), &stmt, 0);
+                while(sqlite3_step(stmt) == SQLITE_ROW)
+                {
+                    printf( (char *)sqlite3_column_text(stmt, 1) );
+                }
+                sqlite3_finalize(stmt);
+                sqlite3_close(db); 
+
+                std::stringstream msg;
+                msg << "<sql status='success'/>";
+                debugStream("ClientConnection") << "SENDING MESSAGE:" << endlog
+                                                << msg.str() << endlog
+                                                << "END OF MESSAGE" << endlog;
+                sendmessage (msg.str(), stop);
+            }
             else if (msgType == "read")
 #else
             if (msgType == "read")

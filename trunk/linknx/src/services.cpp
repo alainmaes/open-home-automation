@@ -70,6 +70,11 @@ void Services::createDefault()
 
 void Services::importXml(ticpp::Element* pConfig)
 {
+#ifdef OPEN_HOME_AUTOMATION
+    ticpp::Element* pIOPorts = pConfig->FirstChildElement("ioports", false);
+    if (pIOPorts)
+        IOPortManager::instance()->importXml(pIOPorts);
+#endif
     ticpp::Element* pSmsGateway = pConfig->FirstChildElement("smsgateway", false);
     if (pSmsGateway)
         smsGateway_m.importXml(pSmsGateway);
@@ -104,9 +109,11 @@ void Services::importXml(ticpp::Element* pConfig)
             delete persistentStorage_m;
         persistentStorage_m = PersistentStorage::create(pPersistence);
     }
+#ifndef OPEN_HOME_AUTOMATION
     ticpp::Element* pIOPorts = pConfig->FirstChildElement("ioports", false);
     if (pIOPorts)
         IOPortManager::instance()->importXml(pIOPorts);
+#endif
 }
 
 void Services::exportXml(ticpp::Element* pConfig)

@@ -142,6 +142,16 @@ void Object::setFloatValue(double value)
         onInternalUpdate();
 }
 
+#ifdef OPEN_HOME_AUTOMATION
+void Object::updateValueFromExternalInput(const std::string& value)
+{
+    ObjectValue *pValue = createObjectValue(value);
+    if (set(pValue))
+        onUpdate();
+}
+#endif
+
+
 ObjectValue* Object::get()
 {
     if (!init_m)
@@ -176,7 +186,7 @@ void Object::importXml(ticpp::Element* pConfig)
 #ifdef OPEN_HOME_AUTOMATION
     std::string address = pConfig->GetAttributeOrDefault("address", "nochange");
     // set default value to "nochange" just to see if the attribute was present or not in xml
-   if (address != "nochange")
+    if (address != "nochange")
         address_m = address;
 #endif
 
@@ -283,7 +293,7 @@ void Object::importXml(ticpp::Element* pConfig)
 #else
     logger_m.infoStream() << "Configured object '" << id_m
                           << "': gad=" << WriteGroupAddr(gad_m)
-                          << " address= " << address_m << endlog;
+                          << " address=" << address_m << endlog;
 #endif
 }
 
@@ -588,8 +598,37 @@ void SwitchingObject::doWrite(const uint8_t* buf, int len, eibaddr_t src)
 
 void SwitchingObject::doSend(bool isWrite)
 {
+#ifndef OPEN_HOME_AUTOMATION
     uint8_t buf[2] = { 0, (isWrite ? 0x80 : 0x40) | (value_m ? 1 : 0) };
     Services::instance()->getKnxConnection()->write(getGad(), buf, 2);
+#else
+    if (getGad())
+    {
+        uint8_t buf[2] = { 0, (isWrite ? 0x80 : 0x40) | (value_m ? 1 : 0) };
+    	Services::instance()->getKnxConnection()->write(getGad(), buf, 2);
+        return;
+    }
+
+    if (!isWrite || getAddress() == "")
+        return;
+
+    std::string connection = getAddress().substr(0, getAddress().find('/'));
+
+    IOPort* port = IOPortManager::instance()->getPort(connection);
+    if (!port)
+        return;
+
+    std::string address = getAddress().substr(getAddress().find('/'));
+    while (address.length() > 0 && address.at(0) == '/')
+        address.erase(0, 1);
+ 
+    std::string command = "SET ";
+    command.append(address);
+    command.append(" ");
+    command.append(toString());
+
+    port->send((const uint8_t *)command.c_str(), command.length());
+#endif
 }
 
 void SwitchingObject::setBoolValue(bool value)
@@ -4319,6 +4358,28 @@ bool ObjectController::objectExists(const std::string& id)
     	return false;
     return true;
 }
+
+Object* ObjectController::getObjectForAddress(const std::string& address)
+{
+    ObjectAddressMap_t::iterator it = objectAddressMap_m.find(address);
+    if (it == objectAddressMap_m.end())
+    {
+        std::stringstream msg;
+        msg << "ObjectController: Object not found with address: '" << address << "'" << std::endl;
+        throw ticpp::Exception(msg.str());
+        return NULL;
+    }
+    it->second->incRefCount();
+    return (*it).second;
+}
+
+bool ObjectController::objectExistsForAddress(const std::string& address)
+{
+    ObjectAddressMap_t::iterator it = objectAddressMap_m.find(address);
+    if (it == objectAddressMap_m.end())
+    	return false;
+    return true;
+}
 #endif
 
 void ObjectController::addObject(Object* object)
@@ -4327,6 +4388,10 @@ void ObjectController::addObject(Object* object)
         throw ticpp::Exception("Object ID already exists");
     if (object->getGad())
         objectMap_m.insert(ObjectPair_t(object->getGad(), object));
+#ifdef OPEN_HOME_AUTOMATION
+    if (object->getAddress() != "")
+        objectAddressMap_m.insert(ObjectAddressPair_t(object->getAddress(), object));
+#endif
     std::list<eibaddr_t>::iterator it2, it_end;
     it_end = object->getListenerGadEnd();
     for (it2=object->getListenerGad(); it2!=it_end; it2++)
@@ -4361,9 +4426,20 @@ void ObjectController::removeObject(Object* object)
         for (it2=object->getListenerGad(); it2!=it_end; it2++)
             removeObjectFromAddressMap((*it2), object);
 
+#ifdef OPEN_HOME_AUTOMATION
+        if (object->getAddress() != "")
+        {
+             ObjectAddressMap_t::iterator addressIt =
+                 objectAddressMap_m.find(object->getAddress());
+             if (addressIt != objectAddressMap_m.end())
+                 objectAddressMap_m.erase(addressIt);
+        }
+#endif
+
         if (it->second->inUse())
             throw ticpp::Exception("Delete failed! Object still in use.");
         delete it->second;
+
         objectIdMap_m.erase(it);
     }
 }
@@ -4380,16 +4456,27 @@ void ObjectController::importXml(ticpp::Element* pConfig)
         {
             Object* object = it->second;
 
-            removeObjectFromAddressMap(object->getGad(), object);
             std::list<eibaddr_t>::iterator it2, it_end;
             it_end = object->getListenerGadEnd();
             for (it2=object->getListenerGad(); it2!=it_end; it2++)
                 removeObjectFromAddressMap((*it2), object);
+            removeObjectFromAddressMap(object->getGad(), object);
 
             if (del)
             {
                 if (object->inUse())
                     throw ticpp::Exception("Delete failed! Object still in use.");
+
+#ifdef OPEN_HOME_AUTOMATION
+                if (object->getAddress() != "")
+                {
+                     ObjectAddressMap_t::iterator addressIt =
+                         objectAddressMap_m.find(object->getAddress());
+                     if (addressIt != objectAddressMap_m.end())
+                         objectAddressMap_m.erase(addressIt);
+                }
+#endif
+
                 delete object;
                 objectIdMap_m.erase(it);
             }
@@ -4403,6 +4490,10 @@ void ObjectController::importXml(ticpp::Element* pConfig)
                 for (it2=object->getListenerGad(); it2!=it_end; it2++)
                     objectMap_m.insert(ObjectPair_t((*it2), object));
                 objectIdMap_m.insert(ObjectIdPair_t(id, object));
+#ifdef OPEN_HOME_AUTOMATION
+                if (object->getAddress() != "")
+                    objectAddressMap_m.insert(ObjectAddressPair_t(object->getAddress(), object));
+#endif
             }
         }
         else
@@ -4417,6 +4508,10 @@ void ObjectController::importXml(ticpp::Element* pConfig)
             for (it2=object->getListenerGad(); it2!=it_end; it2++)
                 objectMap_m.insert(ObjectPair_t((*it2), object));
             objectIdMap_m.insert(ObjectIdPair_t(id, object));
+#ifdef OPEN_HOME_AUTOMATION
+                if (object->getAddress() != "")
+                    objectAddressMap_m.insert(ObjectAddressPair_t(object->getAddress(), object));
+#endif
         }
     }
 

@@ -156,6 +156,30 @@ private:
     static Logger& logger_m;
 };
 
+#ifdef OPEN_HOME_AUTOMATION
+class ArduinoUdpIOPort : public IOPort, public IOPortListener
+{
+public:
+    ArduinoUdpIOPort();
+    virtual ~ ArduinoUdpIOPort();
+
+    virtual void importXml(ticpp::Element* pConfig);
+    virtual void exportXml(ticpp::Element* pConfig);
+
+    int send(const uint8_t* buf, int len);
+    int get(uint8_t* buf, int len, pth_event_t stop);
+    virtual bool isRxEnabled() { return true; };
+
+    virtual void onDataReceived(const uint8_t* buf, unsigned int len);    
+private:
+    std::string host_m;
+    int sockfd_m;
+    int port_m;
+    struct sockaddr_in addr_m;
+    static Logger& logger_m;
+};
+#endif
+
 class TcpClientIOPort : public IOPort
 {
 public:

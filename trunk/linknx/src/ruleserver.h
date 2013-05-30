@@ -253,6 +253,7 @@ public:
 
     virtual void execute() { Start(true); };
     virtual void cancel() { Stop(); };
+    
     virtual bool isFinished() { return Thread::isFinished(); };
 private:
     virtual void Run (pth_sem_t * stop) = 0;
@@ -262,7 +263,32 @@ protected:
     bool parseVarString(std::string &str, bool checkOnly = false);
     int delay_m;
     static Logger& logger_m;
+#ifdef OPEN_HOME_AUTOMATION
+   // void *stmt_m;
+#endif
 };
+
+#ifdef OPEN_HOME_AUTOMATION
+class SQLAction : public Action
+{
+public:
+    SQLAction();
+    virtual ~SQLAction();
+
+    virtual void importXml(ticpp::Element* pConfig);
+    virtual void exportXml(ticpp::Element* pConfig);
+
+private:
+    std::string query_m;
+
+    virtual void Run (pth_sem_t * stop);
+
+    typedef std::list<Action*> ActionsList_t;
+    ActionsList_t actionsList_m;
+    unsigned int start_m, stop_m, duration_m;
+};
+
+#endif
 
 class DimUpAction : public Action
 {
