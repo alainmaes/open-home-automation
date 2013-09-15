@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<widget>
+	<name>waterlevel</name>
+	<label>waterlevel</label>
+	<description>water level sensor</description>
+	<version>1.0</version>
+	<category>Basic widgets</category>
+	<settings>
+		<setting id="label" label="label" type="text" default="Waterlevel" />
+		<setting id="maxDepth" label="Max depth" type="text" default="30" />
+		<setting id="diameter" label="Diameter" type="text" default="30" />
+		<setting id="maxWater" label="Max water depth" type="text" default="200" />
+                <setting id="feedback-object" label="object" type="object" />
+	</settings>
+	<feedbacks>
+		<feedback id="feedback-object" />
+	</feedbacks>
+</widget>

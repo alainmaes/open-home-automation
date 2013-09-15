@@ -41,14 +41,13 @@
 		// map (pass in the actual DOM object). Center it
 		// above the first Geolocated IP address.
 
-		map = new google.maps.Map(
+		var map = new google.maps.Map(
 			mapContainer[ 0 ],
 			{
-				zoom: 18,
 				center: new google.maps.LatLng(
 					0, 0
 				),
-				mapTypeId: google.maps.MapTypeId.ROADMAP
+				mapTypeId: google.maps.MapTypeId.HYBRID
 			}
 		);
 
@@ -64,11 +63,13 @@
 					latitude,
 					longitude
 				),
-				title: (label || "")
+				title: label
 			});
 
                         if (center)
                                 map.setCenter(marker.getPosition());
+
+setZoom(15);
 
 			// Return the new marker reference.
 
@@ -92,9 +93,17 @@
 
                         if (center)
                                 map.setCenter(marker.getPosition());
+setZoom(15);
+
+		}
+
+                // I update the marker's position and label.
+		function setZoom( zoom){
+		        map.setZoom(zoom);
 		}
 
 //addMarker(51.252045, 4.50261, "My location", true);
+setZoom(15);
 	</script>
 </body>
 </html>
