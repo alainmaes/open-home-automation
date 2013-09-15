@@ -30,9 +30,15 @@ CGMAPS.prototype.updateObject = function(obj,value) {
 
             this.currLocation = value;
             var n = value.split(";", 2); 
+
             if (!this.marker)
-                this.marker = iframe.contentWindow.addMarker(n[0], n[1], "", true);
+                this.marker = iframe.contentWindow.addMarker(n[0], n[1], obj, true);
             else
-                iframe.contentWindow.updateMarker(this.marker, n[0], n[1], "", true);
+                iframe.contentWindow.updateMarker(this.marker, n[0], n[1], obj, true);
+
+            //if (!this.conf.getAttribute("zoom")) 
+            //    iframe.contentWindow.setZoom(15);
+            //else
+            //    iframe.contentWindow.setZoom(this.conf.getAttribute("zoom"));
 	}
 };

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type='text/javascript' src='https://www.google.com/jsapi'></script>
+    <script type='text/javascript'>
+      var data;
+      var options;
+      var chart;
+
+      google.load('visualization', '1', {packages:['gauge']});
+      google.setOnLoadCallback(drawChart);
+      function drawChart() {
+        data = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['', 0]]);
+
+        options = {
+          width: 400, height: 120
+        };
+
+        chart = new google.visualization.Gauge(document.getElementById('chart_div'));
+        chart.draw(data, options);
+      }
+
+      function setLabel(newValue)
+      {
+          data.setValue(0, 0, newValue);
+          chart.draw(data, options);
+      };
+
+      function setMax(newValue)
+      {
+          options.max = newValue;
+          
+          options.redFrom = (newValue * 75) / 100;
+          options.redTo = newValue;
+          options.yellowFrom = (newValue * 50) / 100;
+          options.yellowTo = (newValue * 75) / 100;
+          options.greenFrom = 0;
+          options.greenTo = (newValue * 50) / 100;
+          
+          options.minorTicks = 1000;
+          options.minorTicks = 500;
+          chart.draw(data, options);
+      };
+
+      function setValue(newValue)
+      {
+          data.setValue(0, 1, parseFloat(newValue));
+          chart.draw(data, options);
+      };
+
+    </script>
+  </head>
+  <body>
+    <div id='chart_div'></div>
+  </body>
+</html>

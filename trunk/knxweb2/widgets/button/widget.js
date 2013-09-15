@@ -46,6 +46,8 @@ CButton.prototype.refreshHTML = function() {
   if (this.editMode && displaypicture == "yes")
     $(".buttonContent", this.div).css('background-image', 'url(' + getImageUrl(this.conf.getAttribute("picture-active")) + ')');
   else
+        //$('.buttonContent', this.div).css('line-height', this.div.height() + "px");
+        //$('.buttonContent', this.div).css('background-color', 'yellow');
 	$(".buttonContent", this.div).css('background-image', 'url(' + getImageUrl(this.conf.getAttribute("picture")) + ')');
 	
 	$(".buttonContent", this.div).text(this.conf.getAttribute("text"));
@@ -53,7 +55,6 @@ CButton.prototype.refreshHTML = function() {
 	if (this.conf.getAttribute("color")!="") $('.buttonContent', this.div).css('color', this.conf.getAttribute("color")); else $('.buttonContent', this.div).css('color', '');
 	if (this.conf.getAttribute("align")!="") $('.buttonContent', this.div).css('text-align', this.conf.getAttribute("align")); else $('.buttonContent', this.div).css('text-align', '');
 	if (this.conf.getAttribute("text-padding")!="") $('.buttonContent', this.div).css('padding-top', this.conf.getAttribute("text-padding")); else $('.buttonContent', this.div).css('padding-top', '0');
-
 }
 
 // Called by eibcommunicator when a feedback object value has changed

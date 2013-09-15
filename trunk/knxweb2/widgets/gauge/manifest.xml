@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <widget>
-	<name>gmaps</name>
-	<label>gmaps</label>
-	<description>gmaps tracking</description>
+	<name>gauge</name>
+	<label>gauge</label>
+	<description>gauge</description>
 	<version>1.0</version>
 	<category>Basic widgets</category>
 	<settings>
+		<setting id="label" label="label" type="text" default="sensor" />
                 <setting id="feedback-object" label="object" type="object" />
-		<setting id="zoom" label="zoom" type="text" default="15" />
 	</settings>
 	<feedbacks>
 		<feedback id="feedback-object" />
