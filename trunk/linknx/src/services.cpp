@@ -19,6 +19,9 @@
 
 #include "services.h"
 #include "ioport.h"
+#ifdef OPEN_HOME_AUTOMATION
+#include "usercontroller.h"
+#endif
 
 Services* Services::instance_m;
 
@@ -71,6 +74,7 @@ void Services::createDefault()
 void Services::importXml(ticpp::Element* pConfig)
 {
 #ifdef OPEN_HOME_AUTOMATION
+    IOPortManager::instance()->startAutoDetect();
     ticpp::Element* pIOPorts = pConfig->FirstChildElement("ioports", false);
     if (pIOPorts)
         IOPortManager::instance()->importXml(pIOPorts);
@@ -165,3 +169,48 @@ void Services::exportXml(ticpp::Element* pConfig)
     IOPortManager::instance()->exportXml(&pIOPorts);
     pConfig->LinkEndChild(&pIOPorts);
 }
+
+#ifdef OPEN_HOME_AUTOMATION
+void Services::saveConfig()
+{
+    std::string filename = Services::instance()->getConfigFile();
+    if (filename != "")
+    {
+        try
+        {
+            // Save a document
+            ticpp::Document doc;
+            ticpp::Declaration decl("1.0", "", "");
+            doc.LinkEndChild(&decl);
+            ticpp::Element pConfig("config");
+
+            ticpp::Element pUsers("users");
+            UserController::instance()->exportXml(&pUsers);
+            pConfig.LinkEndChild(&pUsers);
+            ticpp::Element pServices("services");
+            Services::instance()->exportXml(&pServices);
+            pConfig.LinkEndChild(&pServices);
+            ticpp::Element pObjects("objects");
+            ObjectController::instance()->exportXml(&pObjects);
+            pConfig.LinkEndChild(&pObjects);
+            ticpp::Element pRules("rules");
+            RuleServer::instance()->exportXml(&pRules);
+            pConfig.LinkEndChild(&pRules);
+            ticpp::Element pLogging("logging");
+            Logging::instance()->exportXml(&pLogging);
+            pConfig.LinkEndChild(&pLogging);
+
+            doc.LinkEndChild(&pConfig);
+            doc.SaveFile(filename);
+        }
+        catch( ticpp::Exception& ex )
+        {
+            // If any function has an error, execution will enter here.
+            // Report the error
+            errorStream("Services") << "Unable to write config to file: "
+                                    << ex.m_details << endlog;
+            //throw "Error writing config to file";
+        }
+    }
+}
+#endif

@@ -1255,6 +1255,7 @@ public:
     bool objectExists(const std::string& id);
     Object* getObjectForAddress(const std::string& address);
     bool objectExistsForAddress(const std::string& address);
+    void changeObjectAddress(Object* object, const std::string& address);
 #endif
     virtual void importXml(ticpp::Element* pConfig);
     virtual void exportXml(ticpp::Element* pConfig);

@@ -44,6 +44,25 @@ public:
 class RxThread;
 class IOPort;
 
+#ifdef OPEN_HOME_AUTOMATION
+class DetectThread : public Thread
+{
+public:
+    DetectThread();
+    virtual ~DetectThread();
+    
+    void startDetection() { isRunning_m = true; Start(); };
+    void stopDetection() { isRunning_m = false; Stop(); };
+
+private:
+    bool isRunning_m;
+    pth_event_t stop_m;
+    static bool sleep(int delay, pth_sem_t * stop);
+    void Run (pth_sem_t * stop);
+    static Logger& logger_m;
+};
+#endif
+
 class IOPortManager
 {
 public:
@@ -64,6 +83,10 @@ public:
 
 //    virtual void exportObjectValues(ticpp::Element* pObjects);
 
+#ifdef OPEN_HOME_AUTOMATION
+    void startAutoDetect();
+#endif
+
 private:
     IOPortManager();
     virtual ~IOPortManager();
@@ -72,6 +95,9 @@ private:
     typedef std::map<std::string ,IOPort*> IOPortMap_t;
     IOPortMap_t portMap_m;
     static IOPortManager* instance_m;
+#ifdef OPEN_HOME_AUTOMATION
+    std::auto_ptr<DetectThread> detectThread_m;
+#endif
 };
 
 class IOPort
@@ -157,6 +183,24 @@ private:
 };
 
 #ifdef OPEN_HOME_AUTOMATION
+class AIOKeepAliveThread : public Thread
+{
+public:
+    AIOKeepAliveThread(IOPort *port);
+    virtual ~AIOKeepAliveThread();
+    
+    void startKeepAlive() { isRunning_m = true; Start(); };
+    void stopKeepAlive() { isRunning_m = false; Stop(); };
+
+private:
+    IOPort *port_m;
+    bool isRunning_m;
+    pth_event_t stop_m;
+    static bool sleep(int delay, pth_sem_t * stop);
+    void Run (pth_sem_t * stop);
+    static Logger& logger_m;
+};
+
 class ArduinoUdpIOPort : public IOPort, public IOPortListener
 {
 public:
@@ -177,6 +221,7 @@ private:
     int port_m;
     struct sockaddr_in addr_m;
     static Logger& logger_m;
+    std::auto_ptr<AIOKeepAliveThread> keepaliveThread_m;
 };
 #endif
 

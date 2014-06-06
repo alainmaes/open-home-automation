@@ -63,6 +63,9 @@ public:
     LocationInfo* getLocationInfo() { return &locationInfo_m; };
     void setConfigFile(const char* filename) { if (filename) configFile_m = filename; };
     std::string getConfigFile() { return configFile_m; };
+#ifdef OPEN_HOME_AUTOMATION
+    void saveConfig();
+#endif
     void createDefault();
 
 private:

@@ -33,6 +33,8 @@ Logger& RxThread::logger_m(Logger::getInstance("RxThread"));
 Logger& UdpIOPort::logger_m(Logger::getInstance("UdpIOPort"));
 #ifdef OPEN_HOME_AUTOMATION
 Logger& ArduinoUdpIOPort::logger_m(Logger::getInstance("ArduinoUdpIOPort"));
+Logger& DetectThread::logger_m(Logger::getInstance("DetectThread"));
+Logger& AIOKeepAliveThread::logger_m(Logger::getInstance("AIOKeepAliveThread"));
 #endif
 Logger& TcpClientIOPort::logger_m(Logger::getInstance("TcpClientIOPort"));
 Logger& SerialIOPort::logger_m(Logger::getInstance("SerialIOPort"));
@@ -125,6 +127,175 @@ void IOPortManager::exportXml(ticpp::Element* pConfig)
         pConfig->LinkEndChild(&pElem);
     }
 }
+
+#ifdef OPEN_HOME_AUTOMATION
+DetectThread::DetectThread() : isRunning_m(false), stop_m(0)
+{}
+
+DetectThread::~DetectThread()
+{
+    Stop();
+}
+
+bool DetectThread::sleep(int delay, pth_sem_t * stop)
+{
+    struct timeval timeout;
+    timeout.tv_sec = delay / 1000;
+    timeout.tv_usec = (delay % 1000) * 1000;
+    pth_event_t stop_ev = pth_event (PTH_EVENT_SEM, stop);
+    pth_select_ev(0, NULL, NULL, NULL, &timeout, stop_ev);
+    return (pth_event_status (stop_ev) == PTH_STATUS_OCCURRED);
+}
+
+void DetectThread::Run (pth_sem_t * stop1)
+{
+    stop_m = pth_event (PTH_EVENT_SEM, stop1);
+    uint8_t buf[1024];
+    int retval;
+    int sockfd_m;
+    struct sockaddr_in addr_m;
+
+    memset (&addr_m, 0, sizeof (addr_m));
+    addr_m.sin_family = AF_INET;
+    addr_m.sin_port = htons(1900);
+    addr_m.sin_addr.s_addr = inet_addr("239.255.255.250");
+
+    sockfd_m = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd_m < 0)
+    {
+        logger_m.errorStream() << "Unable to create socket" << endlog;
+        return;
+    }
+
+    logger_m.debugStream() << "Start ssdp loop." << endlog;
+
+    while (true)
+    {
+        char data[] = "M-SEARCH * HTTP/1.1\r\n"
+                      "Host: 239.255.255.250:1900\r\n"
+                      "Man: \"ssdp:discover\"\r\n"
+                      "ST:upnp:rootdevice\r\n"
+                      "MX:3\r\n"
+                      "\r\n";
+
+        ssize_t nbytes = pth_sendto(sockfd_m, data, strlen(data), 0,
+                                (const struct sockaddr *) &addr_m,
+                                sizeof (addr_m));
+        if (nbytes != strlen(data))
+        {
+            logger_m.errorStream() << "Unable to send to socket" << endlog;
+        }
+        else
+        {
+            while (true)
+            {
+                socklen_t rl;
+                sockaddr_in r;
+                rl = sizeof (r);
+                memset (&r, 0, sizeof (r));
+                pth_event_t timeoutEvent = pth_event(PTH_EVENT_TIME, pth_timeout(1,0));
+                ssize_t i = pth_recvfrom_ev(sockfd_m, buf, sizeof(buf), 0,
+                                            (struct sockaddr *) &r, &rl, timeoutEvent);
+                //logger_m.debugStream() << "Out of recvfrom " << i << " rl=" << rl << endlog;
+                if (i > 0 && rl == sizeof (r))
+                {
+                    std::string msg(reinterpret_cast<const char*>(buf), i);
+                    std::size_t found;
+                    std::string server;
+                    std::string usn;
+                    std::string location;
+
+                    while ((found = msg.find("\r\n")) !=std::string::npos)
+                    {
+                        //logger_m.debugStream() << "Received '" <<
+                        //                            msg.substr(0, found) << 
+                        //                            "'" << endlog;
+
+                        if (msg.length() > 8 &&
+                            msg.substr(0, 8) == "SERVER: ")
+                        {
+                            server = msg.substr(8, found - 8);
+                        }
+                        if (msg.length() > 5 &&
+                            msg.substr(0, 5) == "USN: ")
+                        {
+                            usn = msg.substr(5, found - 5);
+                        }
+                        if (msg.length() > 10 &&
+                            msg.substr(0, 10) == "LOCATION: ")
+                        {
+                            location = msg.substr(10, found - 10);
+                        }
+                        
+                        if (msg.length() > found +2)
+                          msg = msg.substr(found + 2);
+                        else
+                          break;                     
+                    }
+
+                    if (server.find("Arduino") !=std::string::npos &&
+                        server.find("AIO") !=std::string::npos &&
+                        (usn.length() > 5 && usn.substr(0, 5) == "uuid:") &&
+                        (location.length() > 7 && location.substr(0, 7) == "http://") &&
+                         location.substr(7).find("/") !=std::string::npos)
+                    {
+                        //logger_m.debugStream() << "=> SERVER = " << server << endlog;
+                        //logger_m.debugStream() << "=> USN = " << usn << endlog;
+                        //logger_m.debugStream() << "=> LOCATION = " << location << endlog;
+
+                        std::string id = usn.substr(5);
+                        std::string host;
+
+                        host = location.substr(7);
+                        host = host.substr(0, host.find("/"));
+
+                        //logger_m.debugStream() << "=> ID = " << id << endlog;
+                        //logger_m.debugStream() << "=> HOST = " << host << endlog;
+
+                        IOPort* pPort = NULL;
+
+                        if ((pPort = IOPortManager::instance()->getPort(id)) == NULL)
+                        {
+                            ticpp::Element config("ioport");
+
+                            config.SetAttribute("id", id);
+                            config.SetAttribute("type", "arduino");
+                            config.SetAttribute("host", host);
+                            config.SetAttribute("port", "1234");
+
+                            IOPort* pPort = IOPort::create("arduino");
+                            pPort->importXml(&config);
+
+                            IOPortManager::instance()->addPort(pPort);
+                        }
+                        else
+                        {
+                            //TODO check host/port
+                        }
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        if (sleep(60000, stop1))
+            break;        
+    }
+
+    logger_m.debugStream() << "Out of ssdp loop." << endlog;
+    pth_event_free (stop_m, PTH_FREE_THIS);
+    stop_m = 0;
+}
+
+void IOPortManager::startAutoDetect()
+{
+    detectThread_m.reset(new DetectThread());
+    detectThread_m->startDetection();
+}
+#endif
 
 IOPort::IOPort()
 {}
@@ -328,6 +499,45 @@ int UdpIOPort::get(uint8_t* buf, int len, pth_event_t stop)
 }
 
 #ifdef OPEN_HOME_AUTOMATION
+AIOKeepAliveThread::AIOKeepAliveThread(IOPort *port) : port_m(port), isRunning_m(false), stop_m(0)
+{}
+
+AIOKeepAliveThread::~AIOKeepAliveThread()
+{
+    Stop();
+}
+
+bool AIOKeepAliveThread::sleep(int delay, pth_sem_t * stop)
+{
+    struct timeval timeout;
+    timeout.tv_sec = delay / 1000;
+    timeout.tv_usec = (delay % 1000) * 1000;
+    pth_event_t stop_ev = pth_event (PTH_EVENT_SEM, stop);
+    pth_select_ev(0, NULL, NULL, NULL, &timeout, stop_ev);
+    return (pth_event_status (stop_ev) == PTH_STATUS_OCCURRED);
+}
+
+void AIOKeepAliveThread::Run (pth_sem_t * stop1)
+{
+    stop_m = pth_event (PTH_EVENT_SEM, stop1);
+    
+    logger_m.debugStream() << "Start AIO keepalive loop." << endlog;
+
+    while (true)
+    {
+        logger_m.debugStream() << "Doing keepalive." << endlog;
+
+        port_m->send((const uint8_t*)"LOGIN", 5);
+
+        if (sleep(60000, stop1))
+            break;
+    }
+
+    logger_m.debugStream() << "Out of AIO keepalive loop." << endlog;
+    pth_event_free (stop_m, PTH_FREE_THIS);
+    stop_m = 0;
+}
+
 ArduinoUdpIOPort::ArduinoUdpIOPort() : sockfd_m(-1), port_m(0)
 {
     memset (&addr_m, 0, sizeof (addr_m));
@@ -369,8 +579,8 @@ void ArduinoUdpIOPort::importXml(ticpp::Element* pConfig)
 
     addListener(this);
 
-    send((const uint8_t*)"LOGIN", 5);
-    send((const uint8_t*)"CONFIG", 6);
+    keepaliveThread_m.reset(new AIOKeepAliveThread(this));
+    keepaliveThread_m->startKeepAlive();
 }
 
 void ArduinoUdpIOPort::exportXml(ticpp::Element* pConfig)
@@ -413,8 +623,8 @@ int ArduinoUdpIOPort::get(uint8_t* buf, int len, pth_event_t stop)
         //logger_m.debugStream() << "Out of recvfrom " << i << " rl=" << rl << endlog;
         if (i > 0 && rl == sizeof (r))
         {
-            std::string msg(reinterpret_cast<const char*>(buf), i);
-            logger_m.debugStream() << "Received '" << msg << "' on arduino " << getID() << endlog;
+            //std::string msg(reinterpret_cast<const char*>(buf), i);
+            //logger_m.debugStream() << "Received '" << msg << "' on arduino " << getID() << endlog;
             return i;
         }
     }
@@ -529,6 +739,243 @@ void ArduinoUdpIOPort::onDataReceived(const uint8_t* buf, unsigned int len)
                     //throw "Error writing config to file";
                 }
             }
+        }
+
+        return;
+    }
+    else if (msg.substr(0,4) == "CMD ")
+    {
+        int pos;
+
+        /* Format: CMD relay001 67 1:O 2:O */
+
+        msg.erase(0, 4);
+        
+        /* Format: relay001 67 1:O 2:O */
+        
+        pos = msg.find(' ');
+        std::string module = msg.substr(0, pos);
+        msg.erase(0, pos+1);
+        
+        //logger_m.debugStream() << "Command from " << module
+        //                       << " on " << getID() << " found"
+        //                       << endlog;
+
+        std::string modLastActDate = module;
+        modLastActDate.append("-lastActDate");
+        if (!ObjectController::instance()->objectExists(modLastActDate))
+        {
+            obj = Object::create("11.001");
+            if (!obj)
+            {
+                logger_m.errorStream() << "++++ Failed to create new object "
+                                       << modLastActDate << endlog; 
+                return;
+            }
+
+            std::string id = modLastActDate;
+            obj->setID(id.c_str());
+            obj->setDescr(id.c_str());
+            ObjectController::instance()->addObject(obj);
+            Services::instance()->saveConfig();
+        }
+
+        if ((obj = ObjectController::instance()->getObject(modLastActDate)) != NULL)
+        {
+            obj->setValue("now");
+            obj->decRefCount();
+        }
+
+        std::string modLastActTime = module;
+        modLastActTime.append("-lastActTime");
+        if (!ObjectController::instance()->objectExists(modLastActTime))
+        {
+            obj = Object::create("10.001");
+            if (!obj)
+            {
+                logger_m.errorStream() << "++++ Failed to create new object " << modLastActTime << endlog; 
+                return;
+            }
+
+            std::string id = modLastActTime;
+            obj->setID(id.c_str());
+            obj->setDescr(id.c_str());
+            ObjectController::instance()->addObject(obj);
+            Services::instance()->saveConfig();
+        }
+
+        if ((obj = ObjectController::instance()->getObject(modLastActTime)) != NULL)
+        {
+            obj->setValue("now");
+            obj->decRefCount();
+        }
+
+        /* Format: 67 1:O 2:O */
+        
+        pos = msg.find(' ');
+        char cmd = atoi(msg.substr(0, pos).c_str());
+        msg.erase(0, pos+1);
+        
+        switch (cmd)
+        {
+            case 'C':
+            {
+                //logger_m.debugStream() << "Got capabilities from " << module << endlog;
+                
+                std::string addressPfx = getID();
+                addressPfx.append("/");
+                addressPfx.append(module);
+                addressPfx.append("/");
+
+                while (msg.length() > 0)
+                {
+                    pos = msg.find(':');
+                    if (pos == std::string::npos)
+                        return;
+                    std::string pin = msg.substr(0, pos);
+                    msg.erase(0, pos+1);
+                    pos = msg.find(' ');
+                    std::string type;
+                    if (pos == std::string::npos)
+                    {
+                        type = msg;
+                        msg.clear();
+                    }
+                    else
+                    {
+                        type = msg.substr(0, pos);
+                        msg.erase(0, pos+1);
+                    }
+
+                    std::string address = addressPfx;
+                    address.append(pin);
+
+                    //logger_m.debugStream() << "Found pin " << address
+                    //                       << " of type " << type 
+                    //                       << endlog;
+
+                    if (type != "input" && type != "output")
+                    {
+                        logger_m.errorStream() << "++++ Received INVALID type: "
+                                               << type << endlog;
+                        return;
+                    }
+        
+                    obj = NULL;
+
+                    std::string objectId = module;
+                    objectId.append("-");
+                    objectId.append(pin);
+                        
+                    if (ObjectController::instance()->objectExists(objectId))
+                    {
+                        obj = ObjectController::instance()->getObject(objectId);
+                        obj->decRefCount();            
+
+                        if (obj->getAddress() != address)
+                        {
+                            logger_m.errorStream() << "++++ Address changed for "
+                                                   << objectId << endlog;
+                            ObjectController::instance()->changeObjectAddress(obj, address);
+                            Services::instance()->saveConfig();
+                        }
+                        
+                        if ((type == "input" && obj->getType() != "1.001") ||
+                            (type == "output" && obj->getType() != "1.001"))
+                        {
+                            logger_m.errorStream() << "++++ Type changed for "
+                                                   << objectId << endlog;
+                            ObjectController::instance()->removeObject(obj);
+                            obj = NULL;
+                        }
+                    }
+
+                    if (obj)
+                    {
+                        //logger_m.debugStream() << "Pin " << address
+                        //                       << " already exists" 
+                        //                       << endlog;
+                    }
+                    else
+                    {
+                        if (type == "input")
+                            obj = Object::create("1.001");
+                        if (type == "output")
+                            obj = Object::create("1.001");
+                        if (!obj)
+                        {
+                            logger_m.errorStream() << "++++ Failed to create new object " << address << endlog; 
+                            return;
+                        }
+
+                        obj->setID(objectId.c_str());
+                        obj->setAddress(address.c_str());
+                        obj->setDescr(objectId.c_str());
+                        ObjectController::instance()->addObject(obj);
+
+                        logger_m.debugStream() << "Created new object ID=" << objectId
+                                               << " address=" << address 
+                                               << endlog;
+                        Services::instance()->saveConfig();
+                    }
+                }
+
+                break;
+            }
+            case 'V':
+            {
+                //logger_m.debugStream() << "Got value from " << module << endlog;
+
+                std::string addressPfx = getID();
+                addressPfx.append("/");
+                addressPfx.append(module);
+                addressPfx.append("/");
+
+                while (msg.length() > 0)
+                {
+                    pos = msg.find(':');
+                    if (pos == std::string::npos)
+                        return;
+                    std::string pin = msg.substr(0, pos);
+                    msg.erase(0, pos+1);
+                    pos = msg.find(' ');
+                    std::string state;
+                    if (pos == std::string::npos)
+                    {
+                        state = msg;
+                        msg.clear();
+                    }
+                    else
+                    {
+                        state = msg.substr(0, pos);
+                        msg.erase(0, pos+1);
+                    }
+
+                    std::string address = addressPfx;
+                    address.append(pin);
+
+                    //logger_m.debugStream() << "Found pin " << address
+                    //                       << " in state " << state 
+                    //                       << endlog;
+
+                    if (ObjectController::instance()->objectExistsForAddress(address))
+                    {
+                        obj = ObjectController::instance()->getObjectForAddress(address);
+                        obj->updateValueFromExternalInput(state);
+                        obj->decRefCount();            
+                    }
+                }
+                break;
+            }
+            case 12:
+            {
+                //presence
+                break;
+            }
+            default:
+                logger_m.debugStream() << "Unhandled command from " << module
+                                       << " on " << getID() << " found" << endlog;
+                break;
         }
 
         return;

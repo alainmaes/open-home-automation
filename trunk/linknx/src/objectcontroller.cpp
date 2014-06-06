@@ -4380,6 +4380,26 @@ bool ObjectController::objectExistsForAddress(const std::string& address)
     	return false;
     return true;
 }
+
+void ObjectController::changeObjectAddress(Object* object,
+                                           const std::string& address)
+{
+    if (object->getAddress() != "")
+    {
+        ObjectAddressMap_t::iterator addressIt =
+            objectAddressMap_m.find(object->getAddress());
+        if (addressIt != objectAddressMap_m.end())
+            objectAddressMap_m.erase(addressIt);
+    }
+
+    object->setAddress(address.c_str());
+
+    if (object->getAddress() != "")
+    {
+        objectAddressMap_m.insert(
+            ObjectAddressPair_t(object->getAddress(), object));
+    }
+}
 #endif
 
 void ObjectController::addObject(Object* object)
