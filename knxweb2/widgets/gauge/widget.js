@@ -11,6 +11,9 @@ CGAUGE.prototype = new CWidget();
 
 // Refresh HTML from config
 CGAUGE.prototype.refreshHTML = function() {
+    if (this.iframe)
+      return;
+
     var link = "widgets/gauge/gauge.html";
     this.iframe = document.createElement('iframe');
     this.iframe.frameBorder=0;
@@ -36,9 +39,11 @@ CGAUGE.prototype.updateObject = function(obj,value) {
                 var iframe = this.iframe; //.getElementById("my_gauge_frame");
                 if (iframe)
                 {
-                    if (iframe.contentWindow.setLabel)
+                    if (iframe.contentWindow.init)
                     {
-                        iframe.contentWindow.setLabel(this.conf.getAttribute("label"));
+                        iframe.contentWindow.init(this.conf.getAttribute("label"),
+                                                  this.conf.getAttribute("min"),
+                                                  this.conf.getAttribute("max"));
                         this.initialized = true;
                     }
                 }

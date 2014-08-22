@@ -51,6 +51,7 @@ void Services::start()
     knxConnection_m.startConnection();
 #ifdef OPEN_HOME_AUTOMATION
     domintellConnection_m.startConnection();
+    IOPortManager::instance()->startAutoDetect();
 #endif
 }
 
@@ -74,7 +75,6 @@ void Services::createDefault()
 void Services::importXml(ticpp::Element* pConfig)
 {
 #ifdef OPEN_HOME_AUTOMATION
-    IOPortManager::instance()->startAutoDetect();
     ticpp::Element* pIOPorts = pConfig->FirstChildElement("ioports", false);
     if (pIOPorts)
         IOPortManager::instance()->importXml(pIOPorts);
@@ -85,6 +85,17 @@ void Services::importXml(ticpp::Element* pConfig)
     ticpp::Element* pEmailGateway = pConfig->FirstChildElement("emailserver", false);
     if (pEmailGateway)
         emailGateway_m.importXml(pEmailGateway);
+
+#ifdef OPEN_HOME_AUTOMATION
+    ticpp::Element* pMessages = pConfig->FirstChildElement("message-storage", false);
+    if (pMessages)
+    {
+        if (messageController_m)
+            delete messageController_m;
+        messageController_m = new MessageController(pMessages);
+    }
+#endif
+
     ticpp::Element* pXmlServer = pConfig->FirstChildElement("xmlserver", false);
     if (pXmlServer)
     {
@@ -130,6 +141,15 @@ void Services::exportXml(ticpp::Element* pConfig)
     emailGateway_m.exportXml(&pEmailGateway);
     pConfig->LinkEndChild(&pEmailGateway);
 
+#ifdef OPEN_HOME_AUTOMATION
+    if (messageController_m)
+    {
+        ticpp::Element pMessages("message-store");
+        messageController_m->exportXml(&pMessages);
+        pConfig->LinkEndChild(&pMessages);
+    }
+#endif
+
     if (xmlServer_m)
     {
         ticpp::Element pXmlServer("xmlserver");
@@ -151,12 +171,14 @@ void Services::exportXml(ticpp::Element* pConfig)
     exceptionDays_m.exportXml(&pExceptionDays);
     pConfig->LinkEndChild(&pExceptionDays);
 
+#ifdef OPEN_HOME_AUTOMATION
     if (!locationInfo_m.isEmpty())
     {
         ticpp::Element pLocationInfo("location");
         locationInfo_m.exportXml(&pLocationInfo);
         pConfig->LinkEndChild(&pLocationInfo);
     }
+#endif
 
     if (persistentStorage_m)
     {

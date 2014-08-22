@@ -199,7 +199,9 @@ void ClientConnection::Run (pth_sem_t * stop1)
         {
             // Load a document
             ticpp::Document doc;
+#ifndef OPEN_HOME_AUTOMATION
             debugStream("ClientConnection") << "PROCESSING MESSAGE:" << endlog << msg_m << endlog << "END OF MESSAGE" << endlog;
+#endif
             doc.LoadFromString(msg_m);
 
             ticpp::Element* pMsg = doc.FirstChildElement();
@@ -262,7 +264,9 @@ void ClientConnection::Run (pth_sem_t * stop1)
                     std::stringstream msg;
                     msg << "<read status='success'>" << obj->getValue() << "</read>" << std::endl;
                     obj->decRefCount();
+#ifndef OPEN_HOME_AUTOMATION
                     debugStream("ClientConnection") << "SENDING MESSAGE:" << endlog << msg.str() << endlog << "END OF MESSAGE" << endlog;
+#endif
                     sendmessage (msg.str(), stop);
                 }
                 else if (pRead->Value() == "objects")
@@ -336,6 +340,25 @@ void ClientConnection::Run (pth_sem_t * stop1)
                     pMsg->SetAttribute("status", "success");
                     sendmessage (doc.GetAsString(), stop);
                 }
+#ifdef OPEN_HOME_AUTOMATION
+                else if (pRead->Value() == "messages")
+                {
+                    if (Services::instance()->getMessageController() == NULL)
+                        throw "No message storage configured";
+
+                    if (pRead->NoChildren())
+                    {
+                        Services::instance()->getMessageController()->exportMessages(pRead);
+                    }
+                    else
+                    {
+                        throw "Fetch one message not implemented";
+                    }
+
+                    pMsg->SetAttribute("status", "success");
+                    sendmessage (doc.GetAsString(), stop);
+                }
+#endif
                 else if (pRead->Value() == "status")
                 {
                     ticpp::Element* pConfig = pRead->FirstChildElement(false);
@@ -670,6 +693,26 @@ void ClientConnection::Run (pth_sem_t * stop1)
                 }
                 sendmessage ("<admin status='success'/>\n", stop);
             }
+#ifdef OPEN_HOME_AUTOMATION
+            else if (msgType == "remove")
+            {
+                ticpp::Iterator< ticpp::Element > pRemove;
+                for (pRemove = pMsg->FirstChildElement();
+                     pRemove != pRemove.end(); pRemove++ )
+                {
+                    if (pRemove->Value() == "message")
+                    {
+                        if (Services::instance()->getMessageController() == NULL)
+                            throw "No message storage configured";
+
+                        Services::instance()->getMessageController()->removeMessage(pRemove->GetAttribute("id"));
+                    }
+                    else
+                        throw "Unknown remove element";
+                }
+                sendmessage ("<remove status='success'/>\n", stop);
+            }
+#endif
             else
                 throw "Unknown element";
         }

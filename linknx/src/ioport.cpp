@@ -129,6 +129,47 @@ void IOPortManager::exportXml(ticpp::Element* pConfig)
 }
 
 #ifdef OPEN_HOME_AUTOMATION
+void saveConfig()
+{
+    std::string filename = Services::instance()->getConfigFile();
+    if (filename != "")
+    {
+        try
+        {
+            // Save a document
+            ticpp::Document doc;
+            ticpp::Declaration decl("1.0", "", "");
+            doc.LinkEndChild(&decl);
+            ticpp::Element pConfig("config");
+
+            ticpp::Element pUsers("users");
+            UserController::instance()->exportXml(&pUsers);
+            pConfig.LinkEndChild(&pUsers);
+            ticpp::Element pServices("services");
+            Services::instance()->exportXml(&pServices);
+            pConfig.LinkEndChild(&pServices);
+            ticpp::Element pObjects("objects");
+            ObjectController::instance()->exportXml(&pObjects);
+            pConfig.LinkEndChild(&pObjects);
+            ticpp::Element pRules("rules");
+            RuleServer::instance()->exportXml(&pRules);
+            pConfig.LinkEndChild(&pRules);
+            ticpp::Element pLogging("logging");
+            Logging::instance()->exportXml(&pLogging);
+            pConfig.LinkEndChild(&pLogging);
+
+            doc.LinkEndChild(&pConfig);
+            doc.SaveFile(filename);
+        }
+        catch( ticpp::Exception& ex )
+        {
+            // If any function has an error, execution will enter here.
+            // Report the error
+            throw "Error writing config to file";
+        }
+    }
+}
+
 DetectThread::DetectThread() : isRunning_m(false), stop_m(0)
 {}
 
@@ -267,10 +308,22 @@ void DetectThread::Run (pth_sem_t * stop1)
                             pPort->importXml(&config);
 
                             IOPortManager::instance()->addPort(pPort);
+                            saveConfig();
                         }
                         else
                         {
                             //TODO check host/port
+                        }
+
+                        if (server.find("AIOSMS") !=std::string::npos &&
+                            !Services::instance()->getSmsGateway()->isConfigured())
+                        {
+                            ticpp::Element config("smsgateway");
+                            config.SetAttribute("type", "arduino");
+                            config.SetAttribute("ioport", id);
+                            //config.SetAttribute("module", module);
+                            Services::instance()->getSmsGateway()->importXml(&config);
+                            saveConfig();
                         }
                     }
                 }
@@ -561,19 +614,10 @@ void ArduinoUdpIOPort::importXml(ticpp::Element* pConfig)
     IOPort::importXml(pConfig);
 
     sockfd_m = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd_m >= 0)
+    if (sockfd_m < 0)
     {
-#if 0
-        if (bind(sockfd_m, (struct sockaddr *)&addr_m,sizeof(addr)) < 0) /* error */
-        {
-            logger_m.errorStream() << "Unable to bind socket for arduino " << getID() << endlog;
-        }
-#endif
-    }
-    else {
         logger_m.errorStream() << "Unable to create  socket for arduino " << getID() << endlog;
     }    
-    
    
     logger_m.infoStream() << "ArduinoUdpIOPort configured for host " << host_m << " and port " << port_m << endlog;
 
@@ -636,7 +680,34 @@ void ArduinoUdpIOPort::onDataReceived(const uint8_t* buf, unsigned int len)
     Object *obj = NULL;
     std::string msg(reinterpret_cast<const char*>(buf), len);
 
-    if (msg.substr(0,3) == "PIN")
+    if (msg.substr(0,7) == "RX_SMS ")
+    {
+        int pos;
+
+        msg.erase(0, 7);
+
+        pos = msg.find(' ');
+        if (pos == std::string::npos)
+            return;
+        std::string id = msg.substr(0, pos);
+        msg.erase(0, pos+1);
+
+        pos = msg.find(' ');
+        if (pos == std::string::npos)
+            return;
+        std::string from = msg.substr(0, pos);
+        msg.erase(0, pos+1);
+
+        Services::instance()->getSmsGateway()->receiveSms(from, msg);
+
+        std::string command = "RM_SMS ";
+        command.append(id);
+        send((const uint8_t *)command.c_str(), command.length());
+
+        /* make sure the SMS is saved */
+        saveConfig();
+    }
+    else if (msg.substr(0,3) == "PIN")
     {
         int pos;
 
@@ -701,44 +772,7 @@ void ArduinoUdpIOPort::onDataReceived(const uint8_t* buf, unsigned int len)
             obj->setDescr(address.c_str());
             ObjectController::instance()->addObject(obj);
 
-            std::string filename = Services::instance()->getConfigFile();
-            if (filename != "")
-            {
-                try
-	        {
-                    // Save a document
-                    ticpp::Document doc;
-                    ticpp::Declaration decl("1.0", "", "");
-                    doc.LinkEndChild(&decl);
-                    ticpp::Element pConfig("config");
-
-                    ticpp::Element pUsers("users");
-                    UserController::instance()->exportXml(&pUsers);
-                    pConfig.LinkEndChild(&pUsers);
-                    ticpp::Element pServices("services");
-                    Services::instance()->exportXml(&pServices);
-                    pConfig.LinkEndChild(&pServices);
-                    ticpp::Element pObjects("objects");
-                    ObjectController::instance()->exportXml(&pObjects);
-                    pConfig.LinkEndChild(&pObjects);
-                    ticpp::Element pRules("rules");
-                    RuleServer::instance()->exportXml(&pRules);
-                    pConfig.LinkEndChild(&pRules);
-                    ticpp::Element pLogging("logging");
-                    Logging::instance()->exportXml(&pLogging);
-                    pConfig.LinkEndChild(&pLogging);
-
-                    doc.LinkEndChild(&pConfig);
-                    doc.SaveFile(filename);
-                }
-                catch( ticpp::Exception& ex )
-                {
-                    // If any function has an error, execution will enter here.
-                    // Report the error
-                    logger_m.errorStream() << "Unable to write config to file: " << ex.m_details << endlog;
-                    //throw "Error writing config to file";
-                }
-            }
+            saveConfig();
         }
 
         return;
@@ -854,7 +888,22 @@ void ArduinoUdpIOPort::onDataReceived(const uint8_t* buf, unsigned int len)
                     //                       << " of type " << type 
                     //                       << endlog;
 
-                    if (type != "input" && type != "output")
+                    if (type == "smsgateway" &&
+                        !Services::instance()->getSmsGateway()->isConfigured())
+                    {
+                        ticpp::Element config("smsgateway");
+
+                        config.SetAttribute("type", "arduino");
+                        config.SetAttribute("ioport", this->getID());
+                        config.SetAttribute("module", module);
+                        
+                        Services::instance()->getSmsGateway()->importXml(&config);
+                        return;
+                    }
+
+                    if (type != "input" && type != "output" &&
+                        type != "digin" && type != "digout" &&
+                        type != "count" && type != "ultra" && type != "anin")
                     {
                         logger_m.errorStream() << "++++ Received INVALID type: "
                                                << type << endlog;
@@ -881,7 +930,12 @@ void ArduinoUdpIOPort::onDataReceived(const uint8_t* buf, unsigned int len)
                         }
                         
                         if ((type == "input" && obj->getType() != "1.001") ||
-                            (type == "output" && obj->getType() != "1.001"))
+                            (type == "output" && obj->getType() != "1.001") ||
+                            (type == "digin" && obj->getType() != "1.001") ||
+                            (type == "digout" && obj->getType() != "1.001") ||
+                            (type == "anin" && obj->getType() != "7.xxx") ||
+                            (type == "count" && obj->getType() != "7.xxx") ||
+                            (type == "ultra" && obj->getType() != "7.xxx"))
                         {
                             logger_m.errorStream() << "++++ Type changed for "
                                                    << objectId << endlog;
@@ -898,10 +952,11 @@ void ArduinoUdpIOPort::onDataReceived(const uint8_t* buf, unsigned int len)
                     }
                     else
                     {
-                        if (type == "input")
+                        if (type == "input" || type == "output" ||
+                            type == "digin" || type == "digout")
                             obj = Object::create("1.001");
-                        if (type == "output")
-                            obj = Object::create("1.001");
+                        if (type == "count" || type == "ultra" || type == "anin")
+                            obj = Object::create("7.xxx");
                         if (!obj)
                         {
                             logger_m.errorStream() << "++++ Failed to create new object " << address << endlog; 
@@ -970,6 +1025,18 @@ void ArduinoUdpIOPort::onDataReceived(const uint8_t* buf, unsigned int len)
             case 12:
             {
                 //presence
+                break;
+            }
+            case 0x31:
+            {
+                //ICSC_SMS_RX
+                pos = msg.find(' ');
+                if (pos == std::string::npos)
+                    return;
+                std::string from = msg.substr(0, pos);
+                msg.erase(0, pos+1);
+                    
+                Services::instance()->getSmsGateway()->receiveSms(from, msg);
                 break;
             }
             default:

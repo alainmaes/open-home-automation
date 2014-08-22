@@ -76,7 +76,8 @@ var design_view = {
 	},
 
 	draw: function(zone) {
-		var enableSlider=(($("config",design_view.config)[0].getAttribute('enableSlider')=='true')?true:false);
+		design_view.currentZone = zone; //OPEN_HOME_AUTOMATION
+                var enableSlider=(($("config",design_view.config)[0].getAttribute('enableSlider')=='true')?true:false);
 		
 		design_view.clear();
 
@@ -150,7 +151,8 @@ var design_view = {
 
 function gotoZone(id)
 {
-	var enableSlider=(($("config",design_view.config)[0].getAttribute('enableSlider')=='true')?true:false);
+	design_view.currentZone = id; //OPEN_HOME_AUTOMATION
+        var enableSlider=(($("config",design_view.config)[0].getAttribute('enableSlider')=='true')?true:false);
 	
 	if (enableSlider) {
 		var i=0;

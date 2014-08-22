@@ -22,9 +22,19 @@
         chart.draw(data, options);
       }
 
-      function setLabel(newValue)
+      function init(label, min, max)
       {
-          data.setValue(0, 0, newValue);
+          data.setValue(0, 0, label);
+          options.min = parseInt(min);
+          options.max = parseInt(max);
+          options.minorTicks = 5;
+          //options.majorTicks = 10;
+          options.redFrom = min;
+          options.redTo = 0;
+          options.yellowFrom = 0;
+          options.yellowTo = 0;
+          options.greenFrom = 0;
+          options.greenTo = max;
           chart.draw(data, options);
       };
 

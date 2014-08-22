@@ -2,6 +2,8 @@
 
 require_once("include/common.php");
 
+tpl()->addJs("https://www.google.com/jsapi");
+
 tpl()->addCss("lib/jquery/css/cupertino/jquery-ui-1.8.10.custom.css");
 tpl()->addCss('css/style.css');
 tpl()->addJs("lib/jquery/js/jquery.min.js");

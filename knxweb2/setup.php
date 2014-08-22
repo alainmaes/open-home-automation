@@ -55,6 +55,8 @@ if (isset($_GET['ajax']))
 	die;
 }
 
+tpl()->addJs("https://www.google.com/jsapi");
+
 tpl()->assignByRef('json_config', $json_config); // utiliser les données $_config en javascript
 
 tpl()->addCss("lib/jquery/css/cupertino/jquery-ui-1.8.10.custom.css");
