@@ -27,15 +27,12 @@
 
 #ifdef OPEN_HOME_AUTOMATION
 #include "ioport.h"
-
-class SmsPollThread;
-
+#include "messagecontroller.h"
 typedef struct
 {
-    std::string id;
+    time_t      received;
     std::string from;
     std::string message;
-    bool complete;
 } SmsMessage;
 
 class SmsListener
@@ -44,11 +41,9 @@ public:
     virtual ~SmsListener() {};
     virtual void onSmsReceived(SmsMessage *message) = 0;
 };
-
-class SmsGateway : IOPortListener
-#else
-class SmsGateway
 #endif
+
+class SmsGateway
 {
 public:
     SmsGateway();
@@ -60,13 +55,12 @@ public:
     void sendSms(std::string &id, std::string &value);
 
 #ifdef OPEN_HOME_AUTOMATION
-    void onDataReceived(const uint8_t* buf, unsigned int len);
+    void receiveSms(std::string &from, std::string &text);
 
     void addListener(SmsListener *listener);
     bool removeListener(SmsListener *listener);
 
-    void sendAT(std::string command);
-    
+    bool isConfigured() { return configured_m; }; 
 #endif
 
 private:
@@ -74,7 +68,7 @@ private:
     {
         Clickatell,
 #ifdef OPEN_HOME_AUTOMATION
-        IoPort,
+        Arduino,
 #endif
         Unknown
     };
@@ -87,30 +81,17 @@ private:
     std::string from_m;
 #ifdef OPEN_HOME_AUTOMATION
     std::string ioport_m;
+    std::string module_m;
+    bool        configured_m;
 
     typedef std::list<SmsListener*> SmsListenerList_t;
     SmsListenerList_t listenerList_m;
-
-    std::auto_ptr<SmsPollThread> pollThread_m;    
 #endif
 
     static Logger& logger_m;
 };
 
 #ifdef OPEN_HOME_AUTOMATION
-class SmsPollThread : public Thread
-{
-public:
-    SmsPollThread();
-    virtual ~SmsPollThread();
-
-private:
-    void Run (pth_sem_t * stop);
-    static Logger& logger_m;
-};
-
-
-
 class RxSmsCondition : public Condition, public SmsListener
 {
 public:

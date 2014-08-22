@@ -6,13 +6,15 @@
         <user id="guest2" pw-type="encoded" password="YWJj" />
     </users>
     <services>
-        <smsgateway />
+        <smsgateway type="ioport" ioport="test"/>
         <emailserver />
         <xmlserver type="inet" port="10280" />
         <knxconnection url="" />
         <domintellconnection url="" autodiscovery="false" keepalive="0" />
         <exceptiondays />
-        <ioports />
+        <ioports>
+				<ioport id="test" type="serial" dev="/dev/ttyUSB2" speed="9600" framing="8E1" flow="none" />
+			</ioports>
     </services>
     <objects>
         <object type="contact" id="FirstLast" firstName="First" lastName="Last" homePhone="+3231111111" officePhone="+3231111111" mobilePhone="+32111111111" email="me@mail.com">First Last</object>
@@ -23,8 +25,15 @@
                 <at hour="6" min="30" day="18" month="2" />
             </condition>
             <actionlist>
-                <action type="send-sms" id="FirstLast" value="Happy Birthday!" />
+                <action type="send-sms" id="FirstLast" value="test" />
             </actionlist>
+        </rule>
+        <rule id="AT">
+          <condition type="sms-rx" trigger="true" from="1234,+32111111111,5678" expected="Test4">
+          </condition>
+          <actionlist>
+            <action type="shell-cmd" cmd="uptime"/>
+          </actionlist>
         </rule>
     </rules>
     <logging level="DEBUG" />

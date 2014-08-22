@@ -36,12 +36,15 @@
 
 <div id="widgetsTemplate" style="display: none;">
 
+<div id='chart_div'></div>
 	{foreach from=$widgets key=id item=i}
 		{include file="widgets/$id/widget.html"}
 	{/foreach}
 
 </div>
 
+<div id="test1">
+</div>
 
 <div class="menuTitle"></div>
 <div id="notificationZone" class="notification"></div>

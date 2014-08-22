@@ -11,6 +11,9 @@ CWATERLEVEL.prototype = new CWidget();
 
 // Refresh HTML from config
 CWATERLEVEL.prototype.refreshHTML = function() {
+    if (this.iframe)
+      return;
+
     var link = "widgets/waterlevel/waterlevel.html";
     this.iframe = document.createElement('iframe');
     this.iframe.frameBorder=0;

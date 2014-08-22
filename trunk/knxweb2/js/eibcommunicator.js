@@ -110,8 +110,19 @@ var EIBCommunicator = {
 			obj.push(key);
 		EIBCommunicator.eibRead(obj, completeCallBack);
 	},
+        getLocation: function() {
+                if (navigator.geolocation)
+                {
+                        navigator.geolocation.getCurrentPosition(EIBCommunicator.showPosition);
+                }
+        },
+        showPosition: function(position)
+        {
+                alert("Latitude: " + position.coords.latitude + "<br>Longitude: " + position.coords.longitude);
+        },
 	periodicUpdate: function() {
-		EIBCommunicator.updateAll(function(XMLHttpRequest, textStatus) {
+	        //EIBCommunicator.getLocation();	
+                EIBCommunicator.updateAll(function(XMLHttpRequest, textStatus) {
 				setTimeout('EIBCommunicator.periodicUpdate()', 1000);
 			});
 	},

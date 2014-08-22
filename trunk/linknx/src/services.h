@@ -53,7 +53,8 @@ public:
     void stop();
     KnxConnection* getKnxConnection() { return &knxConnection_m; };
 #ifdef OPEN_HOME_AUTOMATION
-    DomintellConnection* getDomintellConnection() { return &domintellConnection_m; };    
+    DomintellConnection* getDomintellConnection() { return &domintellConnection_m; };
+    MessageController* getMessageController() { return messageController_m; };
 #endif
     SmsGateway* getSmsGateway() { return &smsGateway_m; };
     EmailGateway* getEmailGateway() { return &emailGateway_m; };
@@ -82,6 +83,7 @@ private:
     KnxConnection knxConnection_m;
 #ifdef OPEN_HOME_AUTOMATION
     DomintellConnection domintellConnection_m;
+    MessageController *messageController_m;
 #endif
     ExceptionDays exceptionDays_m;
     LocationInfo locationInfo_m;

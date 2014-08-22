@@ -40,7 +40,11 @@ eGsmState state = eGsmStateIdle;
 
 Logger& SmsGateway::logger_m(Logger::getInstance("SmsGateway"));
 
+#ifdef OPEN_HOME_AUTOMATION
+SmsGateway::SmsGateway() : type_m(Unknown), configured_m(false)
+#else
 SmsGateway::SmsGateway() : type_m(Unknown)
+#endif
 {}
 
 SmsGateway::~SmsGateway()
@@ -48,14 +52,6 @@ SmsGateway::~SmsGateway()
 
 void SmsGateway::importXml(ticpp::Element* pConfig)
 {
-#ifdef OPEN_HOME_AUTOMATION
-    if (ioport_m != "" &&
-        IOPortManager::instance()->getPort(ioport_m))
-    {
-        IOPortManager::instance()->getPort(ioport_m)->removeListener(this);
-    }
-#endif
-
     std::string type = pConfig->GetAttribute("type");
     if (type == "clickatell")
     {
@@ -70,32 +66,34 @@ void SmsGateway::importXml(ticpp::Element* pConfig)
         msg << "SmsGateway: Gateway type 'clickatell' not supported, libcurl not available" << std::endl;
         throw ticpp::Exception(msg.str());
 #endif
+#ifdef OPEN_HOME_AUTOMATION
+        configured_m = true;
+#endif
     }
 #ifdef OPEN_HOME_AUTOMATION
-    else if (type == "ioport")
+    else if (type == "arduino")
     {
-        SerialIOPort *serialPort;
+        ArduinoUdpIOPort *arduinoIoPort;
 
-        type_m = IoPort;
+        type_m = Arduino;
         ioport_m = pConfig->GetAttribute("ioport");
+        module_m = pConfig->GetAttribute("module");
         if (!IOPortManager::instance()->getPort(ioport_m))
         {
             std::stringstream msg;
             msg << "SmsGateway: IO Port ID not found: '" << ioport_m << "'" << std::endl;
             throw ticpp::Exception(msg.str());
 	}
-        if ((serialPort =
-               dynamic_cast<SerialIOPort *>
+        if ((arduinoIoPort =
+               dynamic_cast<ArduinoUdpIOPort *>
                (IOPortManager::instance()->getPort(ioport_m))) == NULL)
         {
             std::stringstream msg;
-            msg << "SmsGateway: IO Port is not a serial port: '" << 
+            msg << "SmsGateway: IO Port is not an arduino port: '" << 
                    ioport_m << "'" << std::endl;
             throw ticpp::Exception(msg.str());
 	}
-        
-        IOPortManager::instance()->getPort(ioport_m)->addListener(this);
-        pollThread_m.reset(new SmsPollThread());
+        configured_m = true;
     }
 #endif
     else if (type == "")
@@ -104,6 +102,10 @@ void SmsGateway::importXml(ticpp::Element* pConfig)
         user_m.clear();
         pass_m.clear();
         data_m.clear();
+#ifdef OPEN_HOME_AUTOMATION
+        ioport_m.clear();
+        module_m.clear();
+#endif
     }
     else
     {
@@ -125,11 +127,12 @@ void SmsGateway::exportXml(ticpp::Element* pConfig)
             pConfig->SetAttribute("from", from_m);
     }
 #ifdef OPEN_HOME_AUTOMATION
-    else if (type_m == IoPort)
+    else if (type_m == Arduino)
     {
-        pConfig->SetAttribute("type", "ioport");
+        pConfig->SetAttribute("type", "arduino");
         pConfig->SetAttribute("ioport", ioport_m);
-    }
+        pConfig->SetAttribute("module", module_m);
+     }
 #endif
 }
 
@@ -169,11 +172,20 @@ void SmsGateway::sendSms(std::string &id, std::string &value)
 #endif
     }
 #ifdef OPEN_HOME_AUTOMATION
-    else if (type_m == IoPort)
+    else if (type_m == Arduino)
     {
-        //IOPort::addListener
-        //send
-        //
+        IOPort* port = IOPortManager::instance()->getPort(ioport_m);
+        if (!port)
+            return;
+        
+        std::string command = "TX_SMS ";
+        //command.append(module_m);
+        //command.append(" ");
+        command.append(id);
+        command.append(" ");
+        command.append(value);
+
+        port->send((const uint8_t *)command.c_str(), command.length());
     }
 #endif
     else
@@ -181,80 +193,33 @@ void SmsGateway::sendSms(std::string &id, std::string &value)
 }
 
 #ifdef OPEN_HOME_AUTOMATION
+void SmsGateway::receiveSms(std::string &from, std::string &text)
+{
+    SmsMessage *message = new SmsMessage();
+    message->received = time(0);
+    message->from = from;
+    message->message = text;
+    logger_m.debugStream() << "SmsGateway: RX message from \"" << message->from << "\" with text \"" << message->message << "\"" << endlog;
+
+    Services::instance()->getMessageController()->storeMessage(message->from, message->message);
+
+    SmsListenerList_t::iterator it;
+    for (it = listenerList_m.begin(); it != listenerList_m.end(); it++)
+    {
+        (*it)->onSmsReceived(message);
+    }
+}
 
 void SmsGateway::addListener(SmsListener *listener)
 {
-    if (listenerList_m.empty())
-    {
-        if (pollThread_m.get())
-            pollThread_m->Start();
-    }
-
     listenerList_m.push_back(listener);
 }
 
 bool SmsGateway::removeListener(SmsListener *listener)
 {
     listenerList_m.remove(listener);
-    if (listenerList_m.empty())
-    {
-        if (pollThread_m.get())
-            pollThread_m->Stop();
-    }
     return true;
 }
-
-void SmsGateway::sendAT(std::string command)
-{
-    while (state != eGsmStateIdle)
-        pth_usleep(10);
-
-    SerialIOPort *serialPort;
-    if (IOPortManager::instance()->getPort(ioport_m) &&
-        (serialPort = dynamic_cast<SerialIOPort *>
-                          (IOPortManager::instance()->getPort(ioport_m))) != NULL)
-    {
-        if (command.substr(0, 7) == "AT+CMGL")
-            state = eGsmStateRxSms;
-        serialPort->send((const uint8_t*)command.c_str(), strlen(command.c_str()));
-    }
-}
-
-Logger& SmsPollThread::logger_m(Logger::getInstance("SmsPollThread"));
-
-SmsPollThread::SmsPollThread()
-{}
-
-SmsPollThread::~SmsPollThread()
-{
-    Stop();
-}
-
-void SmsPollThread::Run (pth_sem_t * stop1)
-{
-    pth_event_t stop = pth_event (PTH_EVENT_SEM, stop1);
-    logger_m.debugStream() << "Starting SMS POLL loop." << endlog;
-    
-    Services::instance()->getSmsGateway()->sendAT("AT+CMGF=1\r");
-    //pth_sleep(1);
-    //Services::instance()->getSmsGateway()->sendAT("AT+CMGS=\"1912\"\r");
-    //pth_sleep(2);
-    //Services::instance()->getSmsGateway()->sendAT("CONSULT\x1A\r");
-    //pth_sleep(10);
-
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-    while (pth_event_status (stop) != PTH_STATUS_OCCURRED)
-    {
-        Services::instance()->getSmsGateway()->sendAT("AT+CMGL=\"all\"\r");
-        tv.tv_sec = 1;
-        pth_select_ev(0,0,0,0,&tv,stop);
-    }
-    logger_m.debugStream() << "Out of SMS POLL loop." << endlog;
-    pth_event_free (stop, PTH_FREE_THIS);
-}
-
 
 void StringExplode(std::string str, std::string separator, std::vector<std::string>* results){
     int found;
@@ -268,68 +233,6 @@ void StringExplode(std::string str, std::string separator, std::vector<std::stri
     }
     if(str.length() > 0){
         results->push_back(str);
-    }
-}
-
-void SmsGateway::onDataReceived(const uint8_t* buf, unsigned int len)
-{
-    static SmsMessage *message = NULL;
-
-    if (len < 2)
-        return;
-
-    std::string msg(reinterpret_cast<const char*>(buf), len);
-    if (state == eGsmStateRxSms)
-    {
-        if (msg.substr(0, 2) == "OK")
-        {
-            state = eGsmStateIdle;
-
-            if (message)
-            {
-                char buf[100];
-                snprintf(buf, sizeof(buf), "AT+CMGD=%s\r", message->id.c_str());
-                sendAT(std::string(buf));
-
-                delete(message);
-                message = NULL;
-            }
-        }
-        else if (msg.substr(0, 6) == "+CMGL:" && message == NULL)
-        {
-            //+CMGL: 9,"REC READ","+32000000000",,"12/12/19,15:36:00+04"
-            std::vector<std::string> v;
-            StringExplode(msg.substr(7), ",", &v);
-
-            message = new SmsMessage();
-            message->id = v[0];
-            message->from = v[2].substr(1, v[2].length() - 2);
-            message->message = "";
-            message->complete = false;
-        }
-        else
-        {
-            if (message && !message->complete)
-            {
-                message->complete = true;
-                message->message = msg.substr(0, msg.length() - 1);
-                logger_m.debugStream() << "SmsGateway: RX message from \"" << message->from << "\" with text \"" << message->message << "\"" << endlog;
-                
-                SmsListenerList_t::iterator it;
-                for (it = listenerList_m.begin(); it != listenerList_m.end(); it++)
-                {
-                    (*it)->onSmsReceived(message);
-                }
-            }
-            else
-            {
-                //logger_m.errorStream() << "SmsGateway: RX " << msg << endlog;
-            }
-        }
-    }
-    else
-    {
-       logger_m.errorStream() << "SmsGateway: Received " << msg << endlog;
     }
 }
 
