@@ -144,7 +144,7 @@ void Services::exportXml(ticpp::Element* pConfig)
 #ifdef OPEN_HOME_AUTOMATION
     if (messageController_m)
     {
-        ticpp::Element pMessages("message-store");
+        ticpp::Element pMessages("message-storage");
         messageController_m->exportXml(&pMessages);
         pConfig->LinkEndChild(&pMessages);
     }
