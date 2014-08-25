@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Open home automation</title>
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+    <script type='text/javascript' src="http://code.jquery.com/jquery-1.9.1.js"></script>
+    <script type='text/javascript' src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+    <script type="text/javascript" src="https://raw.github.com/jquery/jquery-ui/master/tests/jquery.simulate.js"></script>
+    <script type='text/javascript' src='https://www.google.com/jsapi'></script>
+    <script src="jquery.knob.js"></script>
+    <script type='text/javascript' src='thermometer.js'></script>
+    <script type='text/javascript' src='jquery.thermometer.js'></script>
+    <script type='text/javascript'>
+      google.load('visualization', '1', {packages:['gauge']});
+      google.setOnLoadCallback(function(){
+        //alert("loaded");
+      });
+    </script>
+    <script type='text/javascript' src="widgets.js"></script>
+
+    <style>
+.zone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+    border:1px solid black;
+}
+
+#controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 32px;
+    height: 32px;
+    z-index: 1000;
+}
+
+#widgets {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 150px;
+    height: 320px;
+    background-color: #ffffff;
+    filter:alpha(opacity=75);
+    -moz-opacity:0.75;
+    -khtml-opacity: 0.75;
+    opacity: 0.75;
+    z-index: 10000;
+    border:1px solid black;
+}
+
+#widgetProperties {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: #ffffff;
+    filter:alpha(opacity=75);
+    -moz-opacity:0.75;
+    -khtml-opacity: 0.75;
+    opacity: 0.75;
+    z-index: 10000;
+    border:1px solid black;
+}
+
+.ui-state-disabled.ui-draggable-disabled { opacity : 1;}
+
+</style>
+
+<script>
+$(function() {
+  var isEdit = false;
+
+  $("#widgets").hide();
+  $("#widgetProperties").hide();
+  $("#controls").append($("<img id='edit' src='images/configure-icon.png'>"));
+  $("#edit", $("#controls")).click(function(e)
+  {
+    isEdit = !isEdit;
+    WidgetFactory.setEditMode(isEdit);
+  });
+
+  $.ajax({
+        type: "GET",
+	url: "design/testDesign.default.xml",
+	//url: "design.xml",
+	dataType: "xml",
+	success: function(xml) {
+            var config = $("config", xml)[0];
+            if ($("config", xml)[0].getAttribute("width"))
+            {
+              $("#design").css('width', $("config", xml)[0].getAttribute("width") + 'px');
+              $("#controls").css('left', ($("config", xml)[0].getAttribute("width") - 32) + 'px');
+            }
+            if ($("config", xml)[0].getAttribute("height"))
+            {
+              $("#design").css('height', $("config", xml)[0].getAttribute("height") + 'px');
+              $("#controls").css('top', ($("config", xml)[0].getAttribute("height") - 32) + 'px');
+            }
+            $("body").css("overflow", "hidden");
+
+            var firstZone = true;
+            $("zone", config).each(function()
+            {
+                $( "#design" ).append($( "<div id='" + this.getAttribute("id") + "' class='zone'></div>" ));
+                if ($("config", xml)[0].getAttribute("width"))
+                    $("#"+this.getAttribute("id")).css('width', $("config", xml)[0].getAttribute("width") + 'px');
+                if ($("config", xml)[0].getAttribute("height"))
+                    $("#"+this.getAttribute("id")).css('height', $("config", xml)[0].getAttribute("height") + 'px');
+                if ($("config", xml)[0].getAttribute("height"))
+                    $("#"+this.getAttribute("id")).css('background-image', 'url(' + getImageUrl(this.getAttribute('img')) + ')');
+
+                var parent = $("#"+this.getAttribute("id"));
+
+                $("control", this).each(function(){ 
+                    var widget = WidgetFactory.createWidget(this.getAttribute("type"), parent, this);
+                });
+                if (!firstZone)
+                  parent.hide();
+                firstZone = false;
+            });
+            WidgetFactory.startUpdate();
+	}
+  });
+});
+    </script>
+  </head>
+  <body>
+    <div id="widgets">Hello World!</div>
+    <div id="widgetProperties"></div>
+    <div id="controls"></div>
+    <div id="design"></div>
+  </body>
+</html>

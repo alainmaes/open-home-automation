@@ -712,6 +712,27 @@ void ClientConnection::Run (pth_sem_t * stop1)
                 }
                 sendmessage ("<remove status='success'/>\n", stop);
             }
+            else if (msgType == "send")
+            {
+                ticpp::Iterator< ticpp::Element > pSend;
+                for (pSend = pMsg->FirstChildElement();
+                     pSend != pSend.end(); pSend++ )
+                {
+                    if (pSend->Value() == "sms")
+                    {
+                        if (!Services::instance()->getSmsGateway()->isConfigured())
+                            throw "No sms gateway configured";
+
+                        std::string to = pSend->GetAttribute("to");
+                        std::string text = pSend->GetAttribute("text");
+                        Services::instance()->getSmsGateway()->sendSms(to, text);
+                    }
+                    else
+                        throw "Unknown send element";
+                }
+                sendmessage ("<send status='success'/>\n", stop);
+            }
+
 #endif
             else
                 throw "Unknown element";
